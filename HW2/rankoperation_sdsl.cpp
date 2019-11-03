@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "sdsl/bit_vectors.hpp"
+#include "sdsl/int_vector.hpp"
 
 using namespace sdsl ;
 
@@ -16,6 +17,10 @@ void printVec(std::vector<T>& v){
         std::cout << s << "\t" ;
     }
     std::cout << "\n" ;
+}
+
+void printsdslVec(int_vector<>& v){
+    
 }
 
 int main(int argc, char** argv)
@@ -29,7 +34,8 @@ int main(int argc, char** argv)
     char* end ;
     size_t N = std::strtoul(argv[1], &end, 10) ;
     size_t integer_to_store = std::strtoul(argv[2], &end, 10) ;
-    std::cout << N << "\t" << integer_to_store << "\n" ;
+    
+    //std::cout << N << "\t" << integer_to_store << "\n" ;
 
     //
     size_t ws = std::floor(std::log2(N)) ;
@@ -42,33 +48,35 @@ int main(int argc, char** argv)
     // b[8] = 1;
 
     // check the size once
-    std::cout << b << "\t" << b.size() << "\n" ;
+    // std::cout << b << "\t" << b.size() << "\n" ;
     
     // naive temporary array
     // try to avoid this
 
     // create a block size of floor(log(n)/2)
     size_t block_size = static_cast<size_t>(std::floor(std::log2(N) / 2)) ;
+    size_t real_block_size = block_size + 1 ;
+    
     // create superblock size of b*floor(log(n))
     size_t superblock_size = static_cast<size_t>(block_size * std::floor(std::log2(N))) ;
-
     size_t num_of_superblock = static_cast<size_t>(std::floor(N / superblock_size)) ;
     // pad by 1 if not multiple
-    if((N % superblock_size) != 0){
+    if( (N % superblock_size) != 0){
         num_of_superblock += 1 ;
     }
     size_t num_of_block = static_cast<size_t>(std::floor(N / block_size)) ;
     // pad by 1 if not multiple
-    if((N % block_size) != 0){
+    if(N % block_size != 0){
         num_of_block += 1 ;
     }
     
     // These should ideally be also bit arrays
-    // int_vector Rs(num_of_superblock, 0, superblock_size)
-    // int_vector Rb(num_of_block, 0, block_size)
-    std::vector<size_t> Rs(num_of_superblock, 0) ;
-    std::vector<size_t> Rb(num_of_block,0) ;
+    int_vector<> Rs(num_of_superblock, 0, superblock_size) ;
+    int_vector<> Rb(num_of_block, 0, real_block_size) ;
 
+    //std::cout << Rs.size() << "\t" << Rb.size() << "\n" ;
+    //std::vector<size_t> Rss(num_of_superblock, 0) ;
+    //std::vector<size_t> Rbs(num_of_block,0) ;
 
     std::cout << "superblock size: " << superblock_size 
               << "\t" << "number of superblocks: " << num_of_superblock
@@ -85,24 +93,34 @@ int main(int argc, char** argv)
     size_t inner_sum = 0 ;
     for(size_t i = 0; i < N ; ++i){
         if(i % superblock_size == 0){
-            Rs[i / superblock_size] = running_size ;
+            Rs.set_int(i, running_size, superblock_size);
+            std::cout << "i/superblock_size: " << i / superblock_size << "\n" ;
+            std::cout << "superblock value " << Rs.get_int(i , superblock_size) << "\n";
+            Rss[i / superblock_size] = running_size ;
             inner_sum = 0 ;
         }
         // inside super block
         if(i % block_size == 0){
-            Rb[i / block_size] = inner_sum ;
+            auto store_ind = i/block_size ;
+            Rb.set_int( store_ind * real_block_size , inner_sum, real_block_size);
+            std::cout << Rb.get_int( store_ind * real_block_size , real_block_size ) << "\n"   ;
+            Rbs[i / block_size] = inner_sum ;
         }
+
         inner_sum += b[i] ;
-        
         running_size += b[i] ;
     }
 
-    printVec(Rs) ;
-    printVec(Rb) ;
+    std::cout << "Rs " << Rs << "\n" ; 
+    std::cout << "Rb " << Rb << "\n" ; 
+
+    printVec(Rss) ;
+    printVec(Rbs) ;
 
     // this should be a bit vector
-    // int_vector fixed(std::pow(2,block_size) * block_size, 0, std::log2(block_size)) ;
-    std::vector<size_t> fixedTypeVec(std::pow(2,block_size) * block_size, 0) ;
+    size_t loglogsize = std::log2(block_size) + 1;
+    int_vector<> fixedTypeVec(std::pow(2,block_size) * block_size, 0, loglogsize) ;
+    // std::vector<size_t> fixedTypeVec(std::pow(2,block_size) * block_size, 0) ;
     for(size_t i = 0 ; i < std::pow(2,block_size) ; i++){
         size_t bit_pattern = 0 ;
         bit_vector b2(block_size,0) ;
@@ -114,23 +132,29 @@ int main(int argc, char** argv)
             auto shifted_block =  i & bit_pattern ;
             //std::cout << "-->" <<  i << "\t" << bit_pattern << "\t" << shifted_block << "\n" ;
             //auto arg = std::bitset<block_size>(i) & std::bitset<block_size>(std::pow(2,j+1)-1) ;
-            std::cout << b2 << "\t" << i << "\t" << __builtin_popcount(shifted_block) << "\n" ;
-            fixedTypeVec[i * block_size + j] = __builtin_popcount(shifted_block) ;
+            //std::cout << b2 << "\t" << i << "\t" << __builtin_popcount(shifted_block) << "\n" ;
+            fixedTypeVec.set_int((i * block_size + j)*loglogsize , __builtin_popcount(shifted_block), loglogsize);
         }
     }
 
+    //return 1 ;
+    std::cout << "fixedTypeVec " << fixedTypeVec << " loglog " << loglogsize << "\n" ;
+    std::cout << b << "\n" ;
     for(size_t query_rank = 0 ; query_rank < N ; ++query_rank){
-        auto sup_ind = query_rank / superblock_size ;
-        auto block_ind = query_rank / block_size ;
+        auto sup_ind = (query_rank / superblock_size) * superblock_size ;
+        auto base_block_ind = (query_rank / block_size) ;
         auto offset = query_rank % block_size ;
 
-        auto content_of_block = b.get_int(block_ind*block_size, block_size) ;
+        auto content_of_block = b.get_int( base_block_ind * block_size, block_size ) ;
 
-        auto computed_rank = Rs[sup_ind] + Rb[block_ind] + fixedTypeVec[content_of_block*block_size + offset] ;
+        auto computed_rank = Rs.get_int(sup_ind, superblock_size) + Rb.get_int(base_block_ind * real_block_size, real_block_size) 
+                                + fixedTypeVec.get_int( (content_of_block * block_size + offset) * loglogsize , loglogsize) ;
 
         std::cout << "query rank: " << query_rank
                   << "\t" << "sup: " << sup_ind
-                  << "\t" << "blo: " << block_ind 
+                  << "\t" << "sup val: " << Rs.get_int(sup_ind, superblock_size)
+                  << "\t" << "blo: " << base_block_ind 
+                  << "\t" << "blo val: " << Rb.get_int(base_block_ind * real_block_size, real_block_size)
                   << "\t" << "cont of block: " << content_of_block
                   << "\t" << "computed rank: " << computed_rank 
                   << "\t" << "sdsl rank: " << rb(query_rank) << "\n" ;
