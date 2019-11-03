@@ -39,12 +39,18 @@ int main(int argc, char** argv)
 
     //
     size_t ws = std::floor(std::log2(N)) ;
+
+    bit_vector* bptr ;
+    bptr = new bit_vector(N,0) ;
+    std::cout << "bptr size " << bptr->size() << "\n" ;
+
     bit_vector b(N, 0) ;
 
     // sdsl rank 
     rank_support_v<> rb(&b) ;
 
     b.set_int(0, integer_to_store, N) ;
+    bptr->set_int(0, integer_to_store, N) ;
     // b[8] = 1;
 
     // check the size once
@@ -75,8 +81,8 @@ int main(int argc, char** argv)
     int_vector<> Rb(num_of_block, 0, real_block_size) ;
 
     //std::cout << Rs.size() << "\t" << Rb.size() << "\n" ;
-    //std::vector<size_t> Rss(num_of_superblock, 0) ;
-    //std::vector<size_t> Rbs(num_of_block,0) ;
+    std::vector<size_t> Rss(num_of_superblock, 0) ;
+    std::vector<size_t> Rbs(num_of_block,0) ;
 
     std::cout << "superblock size: " << superblock_size 
               << "\t" << "number of superblocks: " << num_of_superblock
@@ -166,6 +172,12 @@ int main(int argc, char** argv)
     //bit_vector b3() ;
     std::cout << b2 << "\n" ;
     std::cout << val << "\n" ;
+
+    int_vector<> b3(3, 0, 2) ;
+    std::cout << b3.size() << "\t" << b3.width() << "\n" ;
+
+    b3.set_int(0,2) ;
+    std::cout << b3 << "\t" << b3.size() << "\t" << b3.width() << "\n" ;
     return 0 ;
     
 }
