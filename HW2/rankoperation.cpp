@@ -5,8 +5,11 @@
 #include <cmath>
 #include <vector>
 #include <cstdio>
+#include "sdsl/bit_vectors.hpp"
 
 //using namespace std;
+using namespace sdsl ;
+
 template<typename T>
 void printVec(std::vector<T>& v){
     for(auto s : v){
@@ -18,6 +21,19 @@ void printVec(std::vector<T>& v){
 
 int main()
 {
+    
+    bit_vector b(10000000, 0);
+    b[8] = 1;
+    rank_support_v<> rb(&b);
+
+    std::cout<<rb(8)<< "\n" ;
+    std::cout<<rb(9)<< "\n";
+
+    std::cout << b.size() << "\n" ;
+    std::cout<< "size of b in MB: " << size_in_mega_bytes(b)<< "\n";
+    std::cout<< "size of rb in MB: " << size_in_mega_bytes(rb)<< "\n" ;
+
+
     const size_t N = 33 ;
     std::bitset<N> bs(140003) ;
     std::vector<size_t> naiveArray(bs.size()+1 , 0) ;
