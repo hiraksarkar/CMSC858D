@@ -292,15 +292,9 @@ class rank_supp{
         void pretty_print(){
             std::cout << "*****************Rank Datastructure Summary**************\n" ;
             std::cout << "Bit Array size in MB "<< sdsl::size_in_mega_bytes(*b) <<"\n" ;
-            std::cout << "Superblock Array size in MB "<< sdsl::size_in_mega_bytes(Rs) <<"\n" ;
+            std::cout << "Superblock Array size in MB "<< sdsl::size_in_bytes(Rs) <<"\n" ;
             std::cout << "block Array size in MB "<< sdsl::size_in_mega_bytes(Rb) <<"\n" ;
             std::cout << "Inner block array size in MB "<< sdsl::size_in_mega_bytes(Rp) <<"\n" ;
-            //std::cout<< "Contents of thr arrays\n" ;
-            //std::cout<< "bit array: " << *b << "\n" ;
-            //std::cout<< "Rs: " << Rs << "\n" ;
-            //std::cout<< "Rb: " << Rb << "\n" ;
-            //std::cout<< "Rp: " << Rp << "\n" ; 
-            //std::cout << "*************************End****************************\n" ;
         }
 
 

@@ -11,6 +11,8 @@ int main(int argc, char** argv){
     char* end ;
     size_t N = std::strtoul(argv[1], &end, 10) ;
 
+    // create an extremely conjested array
+    // to see the limit
     sdsl::bit_vector b(N, 1) ;
 
     std::cout << "stored integer " << b.get_int(0, N) << "\n";
@@ -22,10 +24,11 @@ int main(int argc, char** argv){
                << std::chrono::duration_cast<std::chrono::seconds>(end_t - begin).count() 
                << " sec\n" ; 
 
+    rb.test_rank() ;
     rb.pretty_print() ;
     rb.test_select() ;
-    //rb.select(select_pos) ;
-    //rb.pretty_print() ;
-    rb.test_rank() ;
+    
+    
     return 0 ;
+
 }
