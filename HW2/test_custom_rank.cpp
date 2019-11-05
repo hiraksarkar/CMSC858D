@@ -13,7 +13,16 @@ int main(int argc, char** argv){
 
     //// create an extremely conjested array
     //// to see the limit
-    //sdsl::bit_vector b(N, 1) ;
+    sdsl::bit_vector b(33, 1) ;
+    //b.set_int(0, 140003) ;
+    b[10] = 0 ;
+    b[11] = 0 ;
+
+    customrank::rank_supp rb(&b) ;
+    std::cout << b << "\n" ;
+    for(size_t i = 1; i <= 2 ; ++i){
+        std::cout << rb.select_0(i)  << "\n";
+    }
 
     //std::cout << "stored integer " << b.get_int(0, N) << "\n";
 
@@ -24,7 +33,9 @@ int main(int argc, char** argv){
     //           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() 
     //           << " ms\n" ; 
 
-    customrank::wavelet_tree() ;    
+
+    
+    //customrank::wavelet_tree() ;    
     //rb.overload() ;
     //rb.pretty_print() ;
     //rb.test_rank() ;

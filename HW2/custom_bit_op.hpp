@@ -78,7 +78,7 @@ class rank_supp{
                 running_size += (*b)[i] ;
             }
 
-            std::cout << "running_size " << running_size << "\n" ;
+            //std::cout << "running_size " << running_size << "\n" ;
             maxselect = running_size ;
             // We fillup the constant table
             for(size_t i = 0 ; i < std::pow(2,block_size) ; i++){
@@ -209,6 +209,121 @@ class rank_supp{
             if(debug) std::cout << "sdsl answer " << ssl(pos) << "\n" ;
             return select_answer;
         }
+        
+        int select_0(int pos, bool debug = false){ 
+
+            if(debug) std::cout << "select query " << pos << "\n" ;
+            int sup_ind = 0 ; 
+            int block_ind = 0;
+            int select_answer = 0;
+            
+            // if pos is more than highest Rank 
+            
+            // check if this is in the first superblock
+            bool inFirstSuperblock = false;
+            bool inLastSuperblock = false;
+
+            auto first_superblock_rank = superblock_size - Rs.get_int(1*superblock_word_size , superblock_word_size) ;
+            if(pos <= first_superblock_rank or Rs.size() == 1){
+                inFirstSuperblock = true ;
+            }
+            // check if this is in the last superblock
+            if(!inFirstSuperblock){
+                auto last_superblock_rank = num_of_superblock * superblock_size - Rs.get_int((Rs.size()-1)*superblock_word_size, superblock_word_size) ;
+                if(pos > last_superblock_rank){
+                    inLastSuperblock = true ;
+                    block_ind = Rs.size() - 1;
+                }
+            }
+
+            int m_val = 0 ;
+            if(!inFirstSuperblock and !inLastSuperblock){
+                // Find the first number 
+                // greater than or equal to the 
+                // search value
+
+                int low = 0, mid = 0 ;
+                int high = static_cast<int>(Rs.size()) - 1;
+                
+                while(low <= high){
+                    mid = low + ((high - low) >> 2) ;
+                    m_val = mid * superblock_size - Rs.get_int(mid * superblock_word_size, superblock_word_size) ;
+                    if(m_val >= pos){
+                        high = mid - 1 ;
+                    }else{
+                        low = mid + 1 ;
+                    }
+                }
+                
+                if(low < Rs.size()){
+                    sup_ind = low - 1;
+                }else{
+                    sup_ind = Rs.size() - 1 ;
+                }
+            }
+
+            if(debug) std::cout << "Sup ind " << sup_ind << "\n" ;
+            int offset_pos = pos - (sup_ind * superblock_size - Rs.get_int(sup_ind * superblock_word_size, superblock_word_size)) ;
+            if(debug) std::cout << "offset pos " << offset_pos << "\n" ;
+            if(offset_pos == 0){
+                //end of prev superblock has the answer
+                select_answer = sup_ind * superblock_size ;
+                if(debug) std::cout << "answer " << select_answer << "\n" ; 
+                //return ;
+            }
+
+            // inner block binary search
+
+            int num_block_per_superblock = (superblock_size / block_size) ;
+            if(debug) std::cout << "num per superblock " << num_block_per_superblock << "\n" ;
+            if(num_block_per_superblock > 1){
+                // Find the first number 
+                // greater than or equal to the 
+                // search value
+
+                int low = 0, mid = 0 ;
+                int high = num_block_per_superblock - 1;
+                
+                while(low <= high){
+                    mid = low + ((high - low) >> 2) ;
+                    m_val = mid * block_size - Rb.get_int((sup_ind * num_block_per_superblock + mid) * block_word_size, block_word_size) ;
+                    if(debug) std::cout << "m_val " << m_val << "\n" ;
+                    if(m_val >= offset_pos){
+                        high = mid - 1 ;
+                    }else{
+                        low = mid + 1 ;
+                    }
+                }
+                
+                if(low < num_block_per_superblock){
+                    block_ind = low - 1;
+                }else{
+                    block_ind = num_block_per_superblock - 1 ;
+                }
+            }
+
+            if(debug) std::cout << "block ind " << block_ind << "\n" ;
+            if(debug) std::cout << "Rb " << Rb << "\n" ;
+            int within_block_offset = (offset_pos - ((block_ind * block_size) - Rb.get_int((sup_ind * num_block_per_superblock + block_ind) * block_word_size, block_word_size))) ;
+
+            if(debug) std::cout << "within block offset " << within_block_offset << "\n" ;
+            select_answer = sup_ind * superblock_size + block_ind * block_size ;
+            int step_within_block = 0 ;
+            int diff = 0 ;
+            while(diff < within_block_offset){
+                if(!(*b)[select_answer + step_within_block]){
+                    diff += 1 ;
+                }
+                step_within_block += 1 ;
+            }
+            select_answer += step_within_block ;
+
+            sdsl::select_support_mcl<> ssl(b) ;
+            
+            if(debug) std::cout << "answer " << select_answer << "\n" ; 
+            if(debug) std::cout << "sdsl answer " << ssl(pos) << "\n" ;
+            return select_answer - 1;
+        }
 
         void test_select(){
             std::cout << "*******************Testing select with sdsl**************\n" ;
@@ -240,6 +355,37 @@ class rank_supp{
                 std::cout << "\n*******************Testing Ends***********************\n" ;
 
         }
+
+
+        void test_select_0(){
+           std::cout << "*******************Testing select with sdsl**************\n" ;
+            std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+            sdsl::select_support_mcl<> ssl(b) ;
+
+            std::cout << "max value for select " << maxselect << "\n" ;
+            for(int select_query = 1; select_query <= maxselect ; ++select_query){
+                auto computed_index = this->select(select_query) ;
+                //sdsl is non inclusive
+                //computed_index = computed_index - (*b)[computed_index] ;
+                if (computed_index - 1 != ssl(select_query)){
+                    //std::cout << select_query << "\t" 
+                    //          << computed_index - 1<< "\t"
+                    //          << ssl(select_query) << "\n" ;
+                    std::cerr << "ranks do not match " 
+                              << "computed rank " << computed_index - 1
+                              << "\t sdsl rank " << ssl(select_query) 
+                              << " BUG !!!! \n" ;
+                    std::exit(1) ;
+                }
+                //std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
+                _verbose("\rselect_query passed : %d", select_query);
+            }
+            std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+            std::cout << "\nTest completed ... elapsed time " 
+                << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() 
+                << " sec\n" ;  
+                std::cout << "\n*******************Testing Ends***********************\n" ; 
+        }
         
         size_t get_rank(size_t rank_query){
             auto superblock_ind = (rank_query / superblock_size) ;
@@ -254,6 +400,19 @@ class rank_supp{
             return (content_of_superblock + content_of_block + inblock_rank) ;
 
         }
+
+        size_t get_rank_0(size_t rank_query){
+            if (rank_query >= N){
+                std::cerr << "Rank is excedding size of the bit array " << N << "\n" ;
+                return 0 ;
+            }
+            if( rank_query < get_rank_0(rank_query) ){
+                return 0 ;
+            }else{
+                return( rank_query - get_rank(rank_query) ) + 1 ;
+            }
+
+        }        
 
         size_t operator[](size_t rank_query){
             if (rank_query >= N){
@@ -325,8 +484,8 @@ class rank_supp{
 class wavelet_tree{
     public:
         wavelet_tree(){
-            //std::string s = "alabar_a_la_alabarda" ;
-            std::string s = "0167154263" ;
+            std::string s = "alabar_a_la_alabarda" ;
+            //std::string s = "0167154263" ;
             std::set<char> alphabetset;
             std::vector<char> alphabets ;
 
@@ -395,6 +554,7 @@ class wavelet_tree{
            
             std::cout << "\nConstructed wavelet tree \n" ;
             // line 4-11
+            std::vector<size_t> alphabetMapLastBV(s.size(),0) ;
             std::vector<std::vector<size_t>> SPosVec ;
             SPosVec.resize(logsize) ;
             SPosVec[0] = {0, alphabets.size()-1} ; 
@@ -418,7 +578,9 @@ class wavelet_tree{
                 for(size_t i = 0; i < s.size() ;++i){
                     auto prefix_l = (alphabetCoded[i] >> (logsize - l));
                     auto pos = SPos[prefix_l]++ ;
-                    bv_vec[l][pos] = T[i][logsize - l - 1] ; 
+                    bv_vec[l][pos] = T[i][logsize - l - 1] ;
+                    if (l == logsize - 1)
+                        alphabetMapLastBV[alphabetCoded[i]] = pos ;
                 }
 
             }
@@ -432,8 +594,118 @@ class wavelet_tree{
                 }
                 std::cout << "\n" ;
             }
+            // create rank support for all the 
+            // bitvectors
+            std::vector<rank_supp> bv_vec_r ;
+            for(size_t l = 0 ; l < logsize ; ++l){
+                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            }
+            
+            // how many 1's before position 6
+            // call rank '1',6
+            // "0167154263"
+            char to_search = 'l' ;
+            size_t rank_pos = 16 ;
+            auto first_branch_out_path = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            size_t pos_at_level_1 = 0 ;
             
 
+            if(!first_branch_out_path){
+                // if 0
+                pos_at_level_1 = bv_vec_r[0].get_rank_0(rank_pos) ;
+            }else{
+                pos_at_level_1 = bv_vec_r[0][rank_pos] ;
+            }
+
+            //std::cout << first_branch_out_path << " rank_0 of 6 " << pos_at_level_1 << "\t" << bv_vec_r[0].get_rank_0(6) << "\n" ;
+            size_t curr_branch = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            size_t curr_rank_query = rank_pos ;
+            size_t curr_node_ind = 0 ;
+            size_t parent_node_ind = 0 ;
+            for(size_t l = 1 ; l < logsize; ++l){
+                parent_node_ind = curr_node_ind ;
+                if(!curr_branch){
+                    std::cout << "--left path\n" ;
+                    std::cout << "current node id " << curr_node_ind << "\n" ;
+                    if(curr_node_ind > 0){
+                        curr_node_ind = std::pow(2, curr_node_ind) ;
+                    }
+                    std::cout << "current node id " << curr_node_ind << "\n" ;
+                    if(curr_node_ind != 0){
+                        if(l - 1 > 0){
+                            auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+                            std::cout << "start pos node " << start_pos_node << " curr_rank_query " << curr_rank_query << "\n" ;
+                            std::cout << bv_vec[l-1] << "\n" ;
+                            std::cout << bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) << "\t" << bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) << "\n";
+                            std::cout << "abs rank " << bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank_0(start_pos_node-1) << "\n"; 
+                            curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+                            std::cout << "this is differnce of above 2 " << curr_rank_query << "\n" ;
+                        }else{
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+                        curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+                        }
+                    }else{
+                        curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+                    }
+                }else{
+                    // right branch
+                    std::cout << "--right path \n" ;
+                    if(curr_node_ind == 0){
+                        curr_node_ind = 1 ;
+                    }else{
+                        curr_node_ind = std::pow(2, curr_node_ind) + 1 ; 
+                    }
+                    if(curr_node_ind != 0){
+                        if(l - 1 > 0){
+                        auto start_pos_node = SPosVec[l][parent_node_ind] ;
+                        // subtract rank till now
+                        std::cout << "start pos node " << start_pos_node << "\n" ;
+                        std::cout << "abs rank " << bv_vec_r[l-1].get_rank(curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank(start_pos_node-1) << "\n"; 
+                        curr_rank_query = bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) ;
+                            curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank(start_pos_node-1) ;
+                        }else{
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+                        curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+
+                        }
+
+                    }else{
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+                        curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+                    }
+                }
+                curr_rank_query = curr_rank_query - 1 ;
+                curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
+                std::cout << "next rank " << curr_rank_query << "\n" ;
+                std::cout << "next branch " << curr_branch << "\n" ;
+            }
+
+            std::cout << "parent node " << parent_node_ind << " curr node " << curr_node_ind << "\n" ;
+            if(!curr_branch){
+                if(curr_node_ind != 0){
+                    auto start_pos_node = SPosVec[logsize - 1][curr_node_ind] ;
+                    // subtract rank till now
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank_0(start_pos_node-1);
+                }else{
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
+                }
+                //curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
+            }else{
+                if(curr_node_ind != 0){
+                    auto start_pos_node = SPosVec[logsize-1][curr_node_ind] ;
+                    // subtract rank till now
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
+                }else{
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
+                }
+                //curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
+            }
+            std::cout << "final rank " << curr_rank_query << "\n" ;
+
+            
 
         }
 
