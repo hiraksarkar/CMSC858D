@@ -33,9 +33,10 @@ int main(int argc, char** argv){
     //           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() 
     //           << " ms\n" ; 
 
-
-    
-    customrank::wavelet_tree() ;    
+    std::string outDir = "./" ;
+    customrank::wavelet_tree wt(outDir) ; 
+    wt.test_load_and_rank() ;
+    //customrank::wavelet_tree() ;    
     //rb.overload() ;
     //rb.pretty_print() ;
     //rb.test_rank() ;

@@ -10,6 +10,8 @@
 #include <cstdio>
 #include <cstdlib>
 #include <chrono>
+#include <fstream>
+#include <sstream>
 #include "sdsl/bit_vectors.hpp"
 #include "sdsl/int_vector.hpp"
 
@@ -483,13 +485,17 @@ class rank_supp{
 
 class wavelet_tree{
     public:
+        wavelet_tree(std::string& outDir_){
+            outDir = outDir_ ;
+        }
+
         wavelet_tree(){
             std::string s = "alabar_a_la_alabarda" ;
             //std::string s = "0167154263" ;
             std::set<char> alphabetset;
             std::vector<char> alphabets ;
 
-            int id{0} ;
+            // int id{0} ;
             for(char &c: s){
                 if(alphabetset.find(c) == alphabetset.end()){
                     alphabetset.insert(c) ;
@@ -497,94 +503,61 @@ class wavelet_tree{
                 }
             }
             std::sort(alphabets.begin(), alphabets.end()) ;
-            std::map<char,int> alphabetMap ;
+            
             for(size_t i = 0; i < alphabets.size(); ++i){
                 alphabetMap[alphabets[i]] = i ;
-                std::cout << alphabets[i] << "\t" <<  i << "\n" ;
             }
 
-
-            sdsl::bit_vector bvroot(s.size(),0) ;
-            int low = 0;
-            int high = alphabets.size() - 1 ;
-            int mid = low + ((high - low) >> 1) ;
-
-            for(size_t i = 0 ; i < s.size() ; ++i){
-                auto c = s[i] ;
-                if (alphabetMap[c] <= mid){
-                    bvroot[i] = 0 ;
-                }else{
-                    bvroot[i] = 1 ;
-                }
-            }
-
-            std::cout << bvroot << "\n" ;
+            txtsize = s.size() ;
             size_t alphabetSize = alphabets.size() ;
             size_t logsize = std::floor(std::log2(alphabetSize-1)) + 1 ;
-
-            // make a vector of bit vectors each of size
-            // [0..n-1]
-        
-            std::vector<sdsl::bit_vector> bv_vec ;
             std::vector<sdsl::bit_vector> T(s.size()) ;
-
-            //T.resize(s.size()) ;
 
             for(size_t i = 0 ; i < logsize ; ++i){
                 bv_vec.push_back(sdsl::bit_vector(s.size(),0)) ;
             }
+
             // make a histogram table, can be a vector
             std::vector<int> hist(std::pow(2,logsize),0) ;
             std::vector<size_t> alphabetCoded(s.size(), 0) ;
             for(size_t i = 0; i < s.size(); i++){
-                // fill up the T vector
                 auto c = s[i] ;
                 alphabetCoded[i] = alphabetMap[c] ;
                 sdsl::bit_vector bt(logsize, 0) ;
                 bt.set_int(0, alphabetMap[c]) ;
-                //T.set_int(i*logsize, alphabetMap[c]) ;
                 T[i] = bt ;
-                // fill up histogram
                 hist[alphabetMap[c]]++ ;
-                // fill up first level of bit vector
-                // std::cout << bv_vec[0][i] << "\t" << T[i][logsize - 1] << "\n" ;
                 bv_vec[0][i] = T[i][logsize - 1];
             }
 
-            for(size_t i = 0 ; i < hist.size(); ++i){
-                std::cout << i << "\t" << hist[i] << "\n" ;
-            }
+            //for(size_t i = 0 ; i < hist.size(); ++i){
+            //    std::cout << i << "\t" << hist[i] << "\n" ;
+            //}
            
             std::cout << "\nConstructed wavelet tree \n" ;
-            // line 4-11
-            // std::vector<size_t> alphabetMapLastBV(s.size(),0) ;
-            std::vector<std::vector<size_t>> RangeVec ;
-            std::vector<std::vector<size_t>> SPosVec ;
 
             RangeVec.resize(logsize) ;
             SPosVec.resize(logsize) ;
-            SPosVec[0] = {0, alphabets.size()-1} ; 
+            SPosVec[0] = {0} ; 
+            RangeVec[0] = {0} ;
             for(size_t l = logsize - 1 ; l > 0 ; --l){
                 // for this level
                 // calculate histogram
                 std::vector<size_t> SPos(std::pow(2,l), 0) ;
                 std::vector<size_t> range(std::pow(2,l), 0) ;
                 std::vector<size_t> reallocatedAlphabet(s.size(),0) ;
-                std::cout << "hist---\n" ;
+                //std::cout << "hist---\n" ;
                 for(size_t i = 0 ; i < std::pow(2,l); ++i){
                     hist[i] = hist[2*i] + hist[2*i + 1] ;
-                    std::cout << i << "\t" << hist[i] << "\n" ;
+                    //std::cout << i << "\t" << hist[i] << "\n" ;
                 }
                 // use that to calculate SPos
-                std::cout << "\nSPos---\n" ;
+                //std::cout << "\nSPos---\n" ;
                 for(size_t i = 1 ; i < std::pow(2,l); ++i){
                     SPos[i] = SPos[i-1] + hist[i - 1] ;
-                    std::cout<< i << "\t" << SPos[i] << "\n" ;
+                    //std::cout<< i << "\t" << SPos[i] << "\n" ;
                 }
                 SPosVec[l] = SPos ;
-                // use spos to fill bit array
-                // look close to find out indices
-                // create a bit mask to extract 
                 size_t bitmask = (std::pow(2,logsize) - 1) - ( std::pow(2, logsize - l) - 1 ) ;
                 for(size_t i = 0; i < s.size() ;++i){
                     auto prefix_l = (alphabetCoded[i] >> (logsize - l));
@@ -604,29 +577,30 @@ class wavelet_tree{
 
             }
 
-            std::cout << "------\n" ;
+            dump_wavelet_tree() ;
 
-            for(size_t l = 0; l < logsize ; ++l){
-                std::cout << bv_vec[l] << "\n" ;
-            }
+            //for(size_t l = 0; l < logsize ; ++l){
+            //    std::cout << bv_vec[l] << "\n" ;
+            //}
 
-            std::cout << "SPos range \n" ;
-            for(auto& SPos : SPosVec){
-                for(auto pos : SPos){
-                    std::cout << pos << "\t" ;
-                }
-                std::cout << "\n" ;
-            }
+            //std::cout << "SPos range \n" ;
+            //for(auto& SPos : SPosVec){
+            //    for(auto pos : SPos){
+            //        std::cout << pos << "\t" ;
+            //    }
+            //    std::cout << "\n" ;
+            //}
             
-            std::cout << "Alphabet range \n" ;
-            for(auto& range : RangeVec){
-                for(auto r : range){
-                    std::cout << r << "\t" ;
-                }
-                std::cout << "\n" ;
-            }
+            //std::cout << "Alphabet range \n" ;
+            //for(auto& range : RangeVec){
+            //    for(auto r : range){
+            //        std::cout << r << "\t" ;
+            //    }
+            //    std::cout << "\n" ;
+            //}
             // create rank support for all the 
             // bitvectors
+            
             std::vector<rank_supp> bv_vec_r ;
             for(size_t l = 0 ; l < logsize ; ++l){
                 bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
@@ -635,122 +609,392 @@ class wavelet_tree{
             // how many 1's before position 6
             // call rank '1',6
             // "0167154263"
-            char to_search = '_' ;
-            size_t rank_pos = 8 ;
-            auto first_branch_out_path = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
-            size_t pos_at_level_1 = 0 ;
+
+            for(size_t test_pos = 0 ; test_pos < s.size() ; ++test_pos){
+                for(auto& c : alphabetset){
+                    auto fr = get_rank(c, test_pos) ;
+                }
+            }
+            
+            //auto first_branch_out_path = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            //size_t pos_at_level_1 = 0 ;
             
 
-            if(!first_branch_out_path){
-                // if 0
-                pos_at_level_1 = bv_vec_r[0].get_rank_0(rank_pos) ;
-            }else{
-                pos_at_level_1 = bv_vec_r[0][rank_pos] ;
-            }
+            //if(!first_branch_out_path){
+            //    // if 0
+            //    pos_at_level_1 = bv_vec_r[0].get_rank_0(rank_pos) ;
+            //}else{
+            //    pos_at_level_1 = bv_vec_r[0][rank_pos] ;
+            //}
 
             //std::cout << first_branch_out_path << " rank_0 of 6 " << pos_at_level_1 << "\t" << bv_vec_r[0].get_rank_0(6) << "\n" ;
-            size_t curr_branch = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
-            size_t curr_rank_query = rank_pos ;
-            size_t curr_node_ind = 0 ;
-            size_t parent_node_ind = 0 ;
-            for(size_t l = 1 ; l < logsize; ++l){
-                parent_node_ind = curr_node_ind ;
-                if(!curr_branch){
-                    std::cout << "--left path\n" ;
-                    std::cout << "current node id " << curr_node_ind << "\n" ;
-                    if(curr_node_ind > 0){
-                        curr_node_ind = std::pow(2, curr_node_ind) ;
-                    }
-                    std::cout << "current node id " << curr_node_ind << "\n" ;
-                    if(curr_node_ind != 0){
-                        if(l - 1 > 0){
-                            auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
-                            std::cout << "start pos node " << start_pos_node << " curr_rank_query " << curr_rank_query << "\n" ;
-                            std::cout << bv_vec_r[l-1].get_rank(18) << "\t" << bv_vec_r[l-1].get_rank_0(18) << "\n" ;
-                            curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query)  ;
-                            if(start_pos_node > 0){
-                                std::cout << "here rank queries " << start_pos_node + curr_rank_query << "\t" << start_pos_node - 1  << " \n" ;
-                                std::cout << "abs rank " << curr_rank_query << "\t prev rank " << bv_vec_r[l-1].get_rank_0(start_pos_node-1) << "\n"; 
-                                curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
-                            }
-                            //curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
-                            std::cout << "this is differnce of above 2 " << curr_rank_query << "\n" ;
-                        }else{
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
-                        curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
-                        }
-                    }else{
-                        curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
-                    }
-                }else{
-                    // right branch
-                    std::cout << "--right path \n" ;
-                    std::cout << "current node id " << curr_node_ind << "\n" ;
-                    if(curr_node_ind == 0){
-                        curr_node_ind = 1 ;
-                    }else{
-                        curr_node_ind = std::pow(2, curr_node_ind) + 1 ; 
-                    }
-                    std::cout << "current node id " << curr_node_ind << "\n" ;
-                    if(curr_node_ind != 0){
-                        if(l - 1 > 0){
-                        auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
-                        std::cout << "OK..\n" ;
-                        // subtract rank till now
-                        std::cout << "start pos node " << start_pos_node << "\n" ;
-                        curr_rank_query = bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) ;
-                        if(start_pos_node > 0){
-                            std::cout << "abs rank " << bv_vec_r[l-1].get_rank(curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank(start_pos_node-1) << "\n"; 
-                            curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank(start_pos_node-1) ;
-                        }
-                        }else{
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
-                        curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            
+            //size_t curr_branch = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            //size_t curr_rank_query = rank_pos ;
+            //size_t curr_node_ind = 0 ;
+            //size_t parent_node_ind = 0 ;
+            
+            //for(size_t l = 1 ; l < logsize; ++l){
+            //    parent_node_ind = curr_node_ind ;
+            //    if(!curr_branch){
+            //        std::cout << "--left path\n" ;
+            //        std::cout << "current node id " << curr_node_ind << "\n" ;
+            //        if(curr_node_ind > 0){
+            //            curr_node_ind = std::pow(2, curr_node_ind) ;
+            //        }
+            //        std::cout << "current node id " << curr_node_ind << "\n" ;
+            //        if(curr_node_ind != 0){
+            //            if(l - 1 > 0){
+            //                auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+            //                std::cout << "start pos node " << start_pos_node << " curr_rank_query " << curr_rank_query << "\n" ;
+            //                std::cout << bv_vec_r[l-1].get_rank(18) << "\t" << bv_vec_r[l-1].get_rank_0(18) << "\n" ;
+            //                curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query)  ;
+            //                if(start_pos_node > 0){
+            //                    std::cout << "here rank queries " << start_pos_node + curr_rank_query << "\t" << start_pos_node - 1  << " \n" ;
+            //                    std::cout << "abs rank " << curr_rank_query << "\t prev rank " << bv_vec_r[l-1].get_rank_0(start_pos_node-1) << "\n"; 
+            //                    curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+            //                }
+            //                //curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+            //                std::cout << "this is differnce of above 2 " << curr_rank_query << "\n" ;
+            //            }else{
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            //            curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            //            }
+            //        }else{
+            //            curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+            //        }
+            //    }else{
+            //        // right branch
+            //        std::cout << "--right path \n" ;
+            //        std::cout << "current node id " << curr_node_ind << "\n" ;
+            //        if(curr_node_ind == 0){
+            //            curr_node_ind = 1 ;
+            //        }else{
+            //            curr_node_ind = std::pow(2, curr_node_ind) + 1 ; 
+            //        }
+            //        std::cout << "current node id " << curr_node_ind << "\n" ;
+            //        if(curr_node_ind != 0){
+            //            if(l - 1 > 0){
+            //            auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+            //            std::cout << "OK..\n" ;
+            //            // subtract rank till now
+            //            std::cout << "start pos node " << start_pos_node << "\n" ;
+            //            curr_rank_query = bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) ;
+            //            if(start_pos_node > 0){
+            //                std::cout << "abs rank " << bv_vec_r[l-1].get_rank(curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank(start_pos_node-1) << "\n"; 
+            //                curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank(start_pos_node-1) ;
+            //            }
+            //            }else{
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            //            curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
 
-                        }
+            //            }
 
-                    }else{
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
-                        curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
-                        std::cout << "curr rank query " << curr_rank_query << "\n" ; 
-                    }
-                }
-                curr_rank_query = curr_rank_query - 1 ;
-                std::cout << std::bitset<3>(alphabetMap[to_search]) << "\n" ; 
-                curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
-                std::cout << "next rank " << curr_rank_query << "\n" ;
-                std::cout << "next branch " << curr_branch << "\n" ;
-            }
+            //        }else{
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            //            curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+            //            std::cout << "curr rank query " << curr_rank_query << "\n" ; 
+            //        }
+            //    }
+            //    curr_rank_query = curr_rank_query - 1 ;
+            //    std::cout << std::bitset<3>(alphabetMap[to_search]) << "\n" ; 
+            //    curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
+            //    std::cout << "next rank " << curr_rank_query << "\n" ;
+            //    std::cout << "next branch " << curr_branch << "\n" ;
+            //}
 
-            std::cout << "parent node " << parent_node_ind << " curr node " << curr_node_ind << "\n" ;
-            if(!curr_branch){
-                if(curr_node_ind != 0){
-                    auto start_pos_node = SPosVec[logsize - 1][curr_node_ind] ;
-                    // subtract rank till now
-                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank_0(start_pos_node-1);
-                }else{
-                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
-                }
-                //curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
-            }else{
-                if(curr_node_ind != 0){
-                    auto start_pos_node = SPosVec[logsize-1][curr_node_ind] ;
-                    // subtract rank till now
-                    curr_rank_query = bv_vec_r[logsize-1].get_rank(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
-                }else{
-                    curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
-                }
-                //curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
-            }
-            std::cout << "final rank " << curr_rank_query << "\n" ;
+            //std::cout << "parent node " << parent_node_ind << " curr node " << curr_node_ind << "\n" ;
+            //if(!curr_branch){
+            //    if(curr_node_ind != 0){
+            //        auto start_pos_node = SPosVec[logsize - 1][curr_node_ind] ;
+            //        // subtract rank till now
+            //        curr_rank_query = bv_vec_r[logsize-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank_0(start_pos_node-1);
+            //    }else{
+            //        curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
+            //    }
+            //    //curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
+            //}else{
+            //    if(curr_node_ind != 0){
+            //        auto start_pos_node = SPosVec[logsize-1][curr_node_ind] ;
+            //        // subtract rank till now
+            //        curr_rank_query = bv_vec_r[logsize-1].get_rank(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
+            //    }else{
+            //        curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
+            //    }
+            //    //curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
+            //}
+            //std::cout << "final rank " << curr_rank_query << "\n" ;
 
             
 
         }
 
+
+        void test_load_and_rank(){
+            
+            std::string s = "alabar_a_la_alabarda" ;
+            std::set<char> alphabetset;
+            std::vector<char> alphabets ;
+
+            // int id{0} ;
+            for(char &c: s){
+                if(alphabetset.find(c) == alphabetset.end()){
+                    alphabetset.insert(c) ;
+                    alphabets.push_back(c) ;
+                }
+            }
+            std::sort(alphabets.begin(), alphabets.end()) ;
+
+            std::cout << "example created \n" ;
+            load_wave_tree() ;
+
+            size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
+
+            std::vector<rank_supp> bv_vec_r ;
+            for(size_t l = 0 ; l < logsize ; ++l){
+                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            }
+            
+            // how many 1's before position 6
+            // call rank '1',6
+            // "0167154263"
+
+            for(size_t test_pos = 0 ; test_pos < s.size() ; ++test_pos){
+                for(auto& c : alphabetset){
+                    auto fr = get_rank(c, test_pos) ;
+                }
+            }
+        }
+
+        void split(const std::string& str, std::vector<std::string>& tokens, const std::string& delim){
+            const std::string whiteSpace = " " ;
+            size_t prev = 0, pos = 0;
+            do
+            {
+                pos = str.find(delim, prev);
+                if (pos == std::string::npos) pos = str.length();
+                std::string token = str.substr(prev, pos-prev);
+                if (!token.empty() and token != whiteSpace) tokens.push_back(token);
+                prev = pos + delim.length();
+            }
+            while (pos < str.length() && prev < str.length());
+        }
+
+
+        void load_wave_tree(){
+            //std::string outDir = "./" ;
+            std::cout << "Loading wavelet tree \n" ;
+
+            std::string alphabetMapFile = outDir + "/alphabet_map.txt" ;
+            std::string posVecFile = outDir + "/pos_vec.txt" ;
+
+            {
+                std::ifstream fileStream(alphabetMapFile.c_str()) ;
+                std::string line ;
+                // txt size in first line
+                std::getline(fileStream, line) ;
+                line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
+                txtsize = std::stoul(line) ;
+
+                while(std::getline(fileStream, line)){
+                    line.erase(std::remove(line.begin(), line.end(), '\n'), line.end());
+                    std::vector<std::string> tokens ;
+                    split(line, tokens, "\t") ;
+                        if (tokens.size() > 1){
+                            alphabetMap[tokens[0][0]] = std::stoul(tokens[1]) ;
+                        }
+                }
+            }
+            std::cout << "Loaded alphabet Map...\n" ;
+            std::cout << "Size " << alphabetMap.size() << "\n" ;
+            std::cout << "txt size " << txtsize << "\n" ;
+            size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
+
+            {
+                std::ifstream fileStream(posVecFile.c_str()) ;
+                std::string line ;
+                std::vector<std::string> tokens ;
+
+                std::getline(fileStream, line) ;
+                split(line, tokens, "\t") ;
+
+                SPosVec.resize(logsize) ;
+                RangeVec.resize(logsize) ;
+
+                for(size_t l = 0 ; l < logsize ; ++l){
+                    std::vector<size_t> SPos ;
+                    SPos.resize(std::pow(2,l)) ;
+                    for(size_t i = 0 ; i < std::pow(2,l); ++i){
+                        SPos[i] = std::stoul(tokens[(std::pow(2,l)-1) + i]) ;
+                    }
+                    SPosVec[l] = SPos ;
+                }
+                tokens.clear() ;
+                std::getline(fileStream, line) ;
+                split(line, tokens, "\t") ;
+                for(size_t l = 0 ; l < logsize ; ++l){
+                    std::vector<size_t> range ;
+                    range.resize(std::pow(2,l)) ;
+                    for(size_t i = 0 ; i < std::pow(2,l); ++i){
+                        range[i] = std::stoul(tokens[(std::pow(2,l)-1) + i]) ;
+                    }
+                    RangeVec[l] = range ;
+                }
+
+            }
+
+            std::cout << "Loaded vectors...\n" ;
+
+            {
+                bv_vec.resize(logsize) ;
+                for(size_t l = 0 ; l < logsize ; ++l){
+                    std::string file_l = outDir + "/level_" + std::to_string(l) + ".bin" ;
+                    std::ifstream fileStream(file_l.c_str()) ;
+                    sdsl::bit_vector b_temp ;
+                    sdsl::load(b_temp, fileStream) ;
+                    bv_vec[l] = b_temp ;
+                }
+            }
+
+            std::cout << "loaded \n" ;
+
+        }
+
+        void dump_wavelet_tree(){
+            std::string outDir = "./" ;
+            std::string alphabetMapFile = outDir + "/alphabet_map.txt" ;
+            std::string posVecFile = outDir + "/pos_vec.txt" ;
+
+            {
+                std::ofstream fileStream(alphabetMapFile.c_str()) ;
+                fileStream << txtsize << "\n" ;
+                for(auto& sp : alphabetMap){
+                    fileStream << sp.first << "\t" << sp.second << "\n" ;
+                }
+            }
+
+            {
+                std::ofstream fileStream(posVecFile.c_str()) ;
+                //fileStream << txtsize << "\n" ;
+                //std::cout << "SPos range \n" ;
+                for(auto& SPos : SPosVec){
+                    for(auto pos : SPos){
+                        fileStream << pos << "\t" ;
+                    }
+                    //std::cout << "" ;
+                }
+                fileStream << "\n" ;
+                
+                //std::cout << "Alphabet range \n" ;
+                for(auto& range : RangeVec){
+                    for(auto r : range){
+                        fileStream << r << "\t" ;
+                    }
+                } 
+                fileStream << "\n" ;
+            }
+
+            {
+                for(size_t l = 0 ; l < bv_vec.size(); ++l){
+                    std::string file_l = outDir + "/level_" + std::to_string(l) + ".bin" ;
+                    std::ofstream fileStream(file_l.c_str()) ;
+                    sdsl::serialize(bv_vec[l] ,fileStream) ;
+                }
+            }
+
+            std::cout << "dumped\n" ;
+        }
+
+
+        size_t get_rank(char to_search, size_t rank_pos){
+            // build the needed structure
+            size_t alphabetSize = alphabetMap.size() ;
+            size_t logsize = std::floor(std::log2(alphabetSize-1)) + 1 ;
+            std::vector<rank_supp> bv_vec_r ;
+            for(size_t l = 0 ; l < logsize ; ++l){
+                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            }
+            size_t curr_branch = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            size_t curr_rank_query = rank_pos ;
+            size_t curr_node_ind = 0 ;
+            size_t parent_node_ind = 0 ;
+
+            for(size_t l = 1 ; l < logsize; ++l){
+                parent_node_ind = curr_node_ind ;
+                if(!curr_branch){
+                    if(curr_node_ind > 0){
+                        curr_node_ind = std::pow(2, curr_node_ind) ;
+                    }
+                    if(curr_node_ind != 0){
+                        if(l - 1 > 0){
+                            auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+                            curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query)  ;
+                            if(start_pos_node > 0){
+                                curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+                            }
+                        }else{
+                            curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+                        }
+                    }else{
+                        curr_rank_query = bv_vec_r[l-1].get_rank_0(curr_rank_query) ;
+                    }
+                }else{
+                    if(curr_node_ind == 0){
+                        curr_node_ind = 1 ;
+                    }else{
+                        curr_node_ind = std::pow(2, curr_node_ind) + 1 ; 
+                    }
+                    if(curr_node_ind != 0){
+                        if(l - 1 > 0){
+                            auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+                            curr_rank_query = bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) ;
+                            if(start_pos_node > 0){
+                                curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank(start_pos_node-1) ;
+                            }
+                        }else{
+                            curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+                        }
+                    }else{
+                        curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
+                    }
+                }
+                curr_rank_query = curr_rank_query - 1 ;
+                curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
+            }
+
+            if(!curr_branch){
+                if(curr_node_ind != 0){
+                    auto start_pos_node = SPosVec[logsize - 1][curr_node_ind] ;
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank_0(start_pos_node-1);
+                }else{
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
+                }
+            }else{
+                if(curr_node_ind != 0){
+                    auto start_pos_node = SPosVec[logsize-1][curr_node_ind] ;
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
+                }else{
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
+                }
+            }
+            std::cout << "rank of " << to_search << "," << rank_pos << "\t" << curr_rank_query << "\n" ;
+            return curr_rank_query ;
+
+        }
+
+
+
     private:
+        std::map<char, int> alphabetMap ;
+        std::vector<sdsl::bit_vector> bv_vec ;
+        std::vector<std::vector<size_t>> RangeVec ;
+        std::vector<std::vector<size_t>> SPosVec ;
+
+        size_t txtsize ;  
+        std::string outDir{"./"} ;
+
 
 };
 
