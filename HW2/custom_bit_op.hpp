@@ -291,10 +291,14 @@ class rank_supp{
 
         void pretty_print(){
             std::cout << "*****************Rank Datastructure Summary**************\n" ;
-            std::cout << "Bit Array size in MB "<< sdsl::size_in_mega_bytes(*b) <<"\n" ;
-            std::cout << "Superblock Array size in MB "<< sdsl::size_in_bytes(Rs) <<"\n" ;
-            std::cout << "block Array size in MB "<< sdsl::size_in_mega_bytes(Rb) <<"\n" ;
-            std::cout << "Inner block array size in MB "<< sdsl::size_in_mega_bytes(Rp) <<"\n" ;
+            std::cout << "Bit Array size in bits "<< sdsl::size_in_bytes(*b)*8 <<"\n" ;
+            std::cout << "Superblock Array size in bits "<< sdsl::size_in_bytes(Rs)*8 <<"\n" ;
+            std::cout << "block Array size in bits "<< sdsl::size_in_bytes(Rb)*8 <<"\n" ;
+            std::cout << "Inner block array size in bits "<< sdsl::size_in_bytes(Rp)*8 <<"\n" ;
+        }
+
+        void overload(){
+            std::cout << "Total size in bits " << sdsl::size_in_bytes(Rs)*8 + sdsl::size_in_bytes(Rb)*8 + sdsl::size_in_bytes(Rp)*8 << "\n" ;
         }
 
 
@@ -316,6 +320,125 @@ class rank_supp{
         size_t num_of_superblock{0} ;
 
         size_t maxselect{0} ;
+};
+
+class wavelet_tree{
+    public:
+        wavelet_tree(){
+            //std::string s = "alabar_a_la_alabarda" ;
+            std::string s = "0167154263" ;
+            std::set<char> alphabetset;
+            std::vector<char> alphabets ;
+
+            int id{0} ;
+            for(char &c: s){
+                if(alphabetset.find(c) == alphabetset.end()){
+                    alphabetset.insert(c) ;
+                    alphabets.push_back(c) ;
+                }
+            }
+            std::sort(alphabets.begin(), alphabets.end()) ;
+            std::map<char,int> alphabetMap ;
+            for(size_t i = 0; i < alphabets.size(); ++i){
+                alphabetMap[alphabets[i]] = i ;
+                std::cout << alphabets[i] << "\t" <<  i << "\n" ;
+            }
+
+
+            sdsl::bit_vector bvroot(s.size(),0) ;
+            int low = 0;
+            int high = alphabets.size() - 1 ;
+            int mid = low + ((high - low) >> 1) ;
+
+            for(size_t i = 0 ; i < s.size() ; ++i){
+                auto c = s[i] ;
+                if (alphabetMap[c] <= mid){
+                    bvroot[i] = 0 ;
+                }else{
+                    bvroot[i] = 1 ;
+                }
+            }
+
+            std::cout << bvroot << "\n" ;
+            size_t alphabetSize = alphabets.size() ;
+            size_t logsize = std::floor(std::log2(alphabetSize-1)) + 1 ;
+
+            // make a vector of bit vectors each of size
+            // [0..n-1]
+        
+            std::vector<sdsl::bit_vector> bv_vec ;
+            std::vector<sdsl::bit_vector> T(s.size()) ;
+
+            //T.resize(s.size()) ;
+
+            for(size_t i = 0 ; i < logsize ; ++i){
+                bv_vec.push_back(sdsl::bit_vector(s.size(),0)) ;
+            }
+            // make a histogram table, can be a vector
+            std::vector<int> hist(alphabetSize,0) ;
+            std::vector<size_t> alphabetCoded(s.size(), 0) ;
+            for(size_t i = 0; i < s.size(); i++){
+                // fill up the T vector
+                auto c = s[i] ;
+                alphabetCoded[i] = alphabetMap[c] ;
+                sdsl::bit_vector bt(logsize, 0) ;
+                bt.set_int(0, alphabetMap[c]) ;
+                //T.set_int(i*logsize, alphabetMap[c]) ;
+                T[i] = bt ;
+                // fill up histogram
+                hist[alphabetMap[c]]++ ;
+                // fill up first level of bit vector
+                // std::cout << bv_vec[0][i] << "\t" << T[i][logsize - 1] << "\n" ;
+                bv_vec[0][i] = T[i][logsize - 1];
+            }
+
+           
+            std::cout << "\nConstructed wavelet tree \n" ;
+            // line 4-11
+            std::vector<std::vector<size_t>> SPosVec ;
+            SPosVec.resize(logsize) ;
+            SPosVec[0] = {0, alphabets.size()-1} ; 
+            for(size_t l = logsize - 1 ; l > 0 ; --l){
+                // for this level
+                // calculate histogram
+                std::vector<size_t> SPos(std::pow(2,l), 0) ;
+                for(size_t i = 0 ; i < std::pow(2,l); ++i){
+                    hist[i] = hist[2*i] + hist[2*i + 1] ;
+                }
+                // use that to calculate SPos
+                for(size_t i = 1 ; i < std::pow(2,l); ++i){
+                    SPos[i] = SPos[i-1] + hist[i - 1] ;
+                    //std::cout<< i << "\t" << SPos[i] << "\n" ;
+                }
+                SPosVec[l] = SPos ;
+                // use spos to fill bit array
+                // look close to find out indices
+                // create a bit mask to extract 
+                size_t bitmask = (std::pow(2,logsize) - 1) - ( std::pow(2, logsize - l) - 1 ) ;
+                for(size_t i = 0; i < s.size() ;++i){
+                    auto prefix_l = (alphabetCoded[i] >> (logsize - l));
+                    auto pos = SPos[prefix_l]++ ;
+                    bv_vec[l][pos] = T[i][logsize - l - 1] ; 
+                }
+
+            }
+
+            for(size_t l = 0; l < logsize ; ++l){
+                std::cout << bv_vec[l] << "\n" ;
+            }
+            for(auto& SPos : SPosVec){
+                for(auto pos : SPos){
+                    std::cout << pos << "\t" ;
+                }
+                std::cout << "\n" ;
+            }
+            
+
+
+        }
+
+    private:
+
 };
 
 } // end namespace custom rank
