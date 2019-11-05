@@ -35,7 +35,7 @@ int main(int argc, char** argv){
 
 
     
-    //customrank::wavelet_tree() ;    
+    customrank::wavelet_tree() ;    
     //rb.overload() ;
     //rb.pretty_print() ;
     //rb.test_rank() ;

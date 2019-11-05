@@ -406,7 +406,7 @@ class rank_supp{
                 std::cerr << "Rank is excedding size of the bit array " << N << "\n" ;
                 return 0 ;
             }
-            if( rank_query < get_rank_0(rank_query) ){
+            if( rank_query < get_rank(rank_query) ){
                 return 0 ;
             }else{
                 return( rank_query - get_rank(rank_query) ) + 1 ;
@@ -534,7 +534,7 @@ class wavelet_tree{
                 bv_vec.push_back(sdsl::bit_vector(s.size(),0)) ;
             }
             // make a histogram table, can be a vector
-            std::vector<int> hist(alphabetSize,0) ;
+            std::vector<int> hist(std::pow(2,logsize),0) ;
             std::vector<size_t> alphabetCoded(s.size(), 0) ;
             for(size_t i = 0; i < s.size(); i++){
                 // fill up the T vector
@@ -551,24 +551,35 @@ class wavelet_tree{
                 bv_vec[0][i] = T[i][logsize - 1];
             }
 
+            for(size_t i = 0 ; i < hist.size(); ++i){
+                std::cout << i << "\t" << hist[i] << "\n" ;
+            }
            
             std::cout << "\nConstructed wavelet tree \n" ;
             // line 4-11
-            std::vector<size_t> alphabetMapLastBV(s.size(),0) ;
+            // std::vector<size_t> alphabetMapLastBV(s.size(),0) ;
+            std::vector<std::vector<size_t>> RangeVec ;
             std::vector<std::vector<size_t>> SPosVec ;
+
+            RangeVec.resize(logsize) ;
             SPosVec.resize(logsize) ;
             SPosVec[0] = {0, alphabets.size()-1} ; 
             for(size_t l = logsize - 1 ; l > 0 ; --l){
                 // for this level
                 // calculate histogram
                 std::vector<size_t> SPos(std::pow(2,l), 0) ;
+                std::vector<size_t> range(std::pow(2,l), 0) ;
+                std::vector<size_t> reallocatedAlphabet(s.size(),0) ;
+                std::cout << "hist---\n" ;
                 for(size_t i = 0 ; i < std::pow(2,l); ++i){
                     hist[i] = hist[2*i] + hist[2*i + 1] ;
+                    std::cout << i << "\t" << hist[i] << "\n" ;
                 }
                 // use that to calculate SPos
+                std::cout << "\nSPos---\n" ;
                 for(size_t i = 1 ; i < std::pow(2,l); ++i){
                     SPos[i] = SPos[i-1] + hist[i - 1] ;
-                    //std::cout<< i << "\t" << SPos[i] << "\n" ;
+                    std::cout<< i << "\t" << SPos[i] << "\n" ;
                 }
                 SPosVec[l] = SPos ;
                 // use spos to fill bit array
@@ -579,18 +590,38 @@ class wavelet_tree{
                     auto prefix_l = (alphabetCoded[i] >> (logsize - l));
                     auto pos = SPos[prefix_l]++ ;
                     bv_vec[l][pos] = T[i][logsize - l - 1] ;
-                    if (l == logsize - 1)
-                        alphabetMapLastBV[alphabetCoded[i]] = pos ;
+                    reallocatedAlphabet[pos] = alphabetCoded[i] ;
                 }
+                // store_
+                for(size_t i = 1 ; i < std::pow(2,l) ; ++i){
+                    if(i < std::pow(2,l) - 1){
+                        range[i] = *std::min_element(reallocatedAlphabet.begin() + SPosVec[l][i], reallocatedAlphabet.begin() + SPosVec[l][i+1]) ;
+                    }else{
+                        range[i] = *std::min_element(reallocatedAlphabet.begin() + SPosVec[l][i], reallocatedAlphabet.end()) ;
+                    }
+                }
+                RangeVec[l] = range ;
 
             }
+
+            std::cout << "------\n" ;
 
             for(size_t l = 0; l < logsize ; ++l){
                 std::cout << bv_vec[l] << "\n" ;
             }
+
+            std::cout << "SPos range \n" ;
             for(auto& SPos : SPosVec){
                 for(auto pos : SPos){
                     std::cout << pos << "\t" ;
+                }
+                std::cout << "\n" ;
+            }
+            
+            std::cout << "Alphabet range \n" ;
+            for(auto& range : RangeVec){
+                for(auto r : range){
+                    std::cout << r << "\t" ;
                 }
                 std::cout << "\n" ;
             }
@@ -604,8 +635,8 @@ class wavelet_tree{
             // how many 1's before position 6
             // call rank '1',6
             // "0167154263"
-            char to_search = 'l' ;
-            size_t rank_pos = 16 ;
+            char to_search = '_' ;
+            size_t rank_pos = 8 ;
             auto first_branch_out_path = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
             size_t pos_at_level_1 = 0 ;
             
@@ -635,10 +666,14 @@ class wavelet_tree{
                         if(l - 1 > 0){
                             auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
                             std::cout << "start pos node " << start_pos_node << " curr_rank_query " << curr_rank_query << "\n" ;
-                            std::cout << bv_vec[l-1] << "\n" ;
-                            std::cout << bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) << "\t" << bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) << "\n";
-                            std::cout << "abs rank " << bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank_0(start_pos_node-1) << "\n"; 
-                            curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+                            std::cout << bv_vec_r[l-1].get_rank(18) << "\t" << bv_vec_r[l-1].get_rank_0(18) << "\n" ;
+                            curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query)  ;
+                            if(start_pos_node > 0){
+                                std::cout << "here rank queries " << start_pos_node + curr_rank_query << "\t" << start_pos_node - 1  << " \n" ;
+                                std::cout << "abs rank " << curr_rank_query << "\t prev rank " << bv_vec_r[l-1].get_rank_0(start_pos_node-1) << "\n"; 
+                                curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
+                            }
+                            //curr_rank_query = bv_vec_r[l-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[l-1].get_rank_0(start_pos_node-1) ;
                             std::cout << "this is differnce of above 2 " << curr_rank_query << "\n" ;
                         }else{
                         std::cout << "curr rank query " << curr_rank_query << "\n" ; 
@@ -651,19 +686,24 @@ class wavelet_tree{
                 }else{
                     // right branch
                     std::cout << "--right path \n" ;
+                    std::cout << "current node id " << curr_node_ind << "\n" ;
                     if(curr_node_ind == 0){
                         curr_node_ind = 1 ;
                     }else{
                         curr_node_ind = std::pow(2, curr_node_ind) + 1 ; 
                     }
+                    std::cout << "current node id " << curr_node_ind << "\n" ;
                     if(curr_node_ind != 0){
                         if(l - 1 > 0){
-                        auto start_pos_node = SPosVec[l][parent_node_ind] ;
+                        auto start_pos_node = SPosVec[l-1][parent_node_ind] ;
+                        std::cout << "OK..\n" ;
                         // subtract rank till now
                         std::cout << "start pos node " << start_pos_node << "\n" ;
-                        std::cout << "abs rank " << bv_vec_r[l-1].get_rank(curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank(start_pos_node-1) << "\n"; 
                         curr_rank_query = bv_vec_r[l-1].get_rank(start_pos_node + curr_rank_query) ;
+                        if(start_pos_node > 0){
+                            std::cout << "abs rank " << bv_vec_r[l-1].get_rank(curr_rank_query) << "\t prev rank " << bv_vec_r[l-1].get_rank(start_pos_node-1) << "\n"; 
                             curr_rank_query = curr_rank_query - bv_vec_r[l-1].get_rank(start_pos_node-1) ;
+                        }
                         }else{
                         std::cout << "curr rank query " << curr_rank_query << "\n" ; 
                         curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
@@ -678,6 +718,7 @@ class wavelet_tree{
                     }
                 }
                 curr_rank_query = curr_rank_query - 1 ;
+                std::cout << std::bitset<3>(alphabetMap[to_search]) << "\n" ; 
                 curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
                 std::cout << "next rank " << curr_rank_query << "\n" ;
                 std::cout << "next branch " << curr_branch << "\n" ;
@@ -697,7 +738,7 @@ class wavelet_tree{
                 if(curr_node_ind != 0){
                     auto start_pos_node = SPosVec[logsize-1][curr_node_ind] ;
                     // subtract rank till now
-                    curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
+                    curr_rank_query = bv_vec_r[logsize-1].get_rank(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank(start_pos_node-1);
                 }else{
                     curr_rank_query = bv_vec_r[logsize-1].get_rank(curr_rank_query) ;
                 }
