@@ -34,9 +34,9 @@ int main(int argc, char** argv){
     //           << " ms\n" ; 
 
     std::string outDir = "./" ;
-    customrank::wavelet_tree wt(outDir) ; 
-    wt.test_load_and_rank() ;
-    //customrank::wavelet_tree() ;    
+    //customrank::wavelet_tree wt(outDir) ; 
+    //wt.test_load_and_rank() ;
+    customrank::wavelet_tree() ;    
     //rb.overload() ;
     //rb.pretty_print() ;
     //rb.test_rank() ;
