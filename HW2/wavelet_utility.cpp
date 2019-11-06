@@ -88,7 +88,7 @@ void access(WaveletTreeOpt& wtOpt){
         std::cout << wt.access(wtOpt.pos) << "\n" ;
     }
 
-    wt.select('b', 5) ;
+    //wt.select('b', 5) ;
     //wt.access(21, true) ;
 
 }
