@@ -74,6 +74,38 @@ void performRank(WaveletTreeOpt& wtOpt){
 
 }
 
+void performSelect(WaveletTreeOpt& wtOpt){
+    if(!ghc::filesystem::exists(wtOpt.outDir)){
+        std::cout << "First call build command to build the index " << wtOpt.outDir << " does not exist\n" ; 
+        std::exit(1) ;
+    }
+    customrank::wavelet_tree wt ;
+    wt.load_wave_tree(wtOpt.outDir) ;
+    if(!ghc::filesystem::exists(wtOpt.rankFile)){
+        std::cout << "Rank file " << wtOpt.rankFile << " does not exist\n" ; 
+        std::exit(1) ;
+    }
+    
+    std::ifstream fileStream(wtOpt.rankFile.c_str()) ;
+    std::string line ;
+    while(std::getline(fileStream , line)){
+        std::vector<std::string> tokens ;
+        wt.split(line, tokens, "\t") ;
+        if(tokens.size() > 1){
+            char c = tokens[0][0] ;
+            size_t pos = std::stoul(tokens[1]) ;
+            if(wt.inAlphabet(c)){
+                std::cout<< wt.select(c, pos) << "\n";
+            }else{
+                std::cout << c << " is not present in the index\n" ;
+            }
+        }
+    }
+
+    //wt.access(21, true) ;
+
+}
+
 void access(WaveletTreeOpt& wtOpt){
     if(!ghc::filesystem::exists(wtOpt.outDir)){
         std::cout << "First call build command to build the index " << wtOpt.outDir << " does not exist\n" ; 
@@ -126,6 +158,17 @@ int main(int argc, char* argv[]) {
       value("rank-file", wtOpt.rankFile)) %
      "output directory"
     ) ;
+    auto selectMode = (
+     command("select").set(selected, mode::select),
+
+     (option("-i", "--input-file") &
+      value("input-file", wtOpt.outDir)) %
+     "reference file",
+
+    (required("-r", "--select-file") &
+      value("rank-file", wtOpt.rankFile)) %
+     "select_file"
+    ) ;
     
     auto accessMode = (
      command("access").set(selected, mode::access),
@@ -142,6 +185,7 @@ int main(int argc, char* argv[]) {
     auto cli = (
     (buildMode |
      rankMode |
+     selectMode |
      accessMode | 
         command("--help").set(selected,mode::help) |
         command("-h").set(selected,mode::help) |
@@ -165,6 +209,7 @@ int main(int argc, char* argv[]) {
     switch(selected){
       case mode::build: buildWaveletTree(wtOpt) ; break ; 
       case mode::rank: performRank(wtOpt) ; break ; 
+      case mode::select: performSelect(wtOpt) ; break ; 
       case mode::access: access(wtOpt) ; break ; 
     case mode::help: std::cout << make_man_page(cli, "build") << make_man_page(cli, "rank") ; 
     }
