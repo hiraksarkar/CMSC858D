@@ -425,30 +425,29 @@ class rank_supp{
             return get_rank(rank_query) ;
         }
 
-        void test_rank(){
+        size_t test_rank(){
 
-            std::cout << "*******************Testing rank with sdsl**************\n" ;
+            //std::cout << "*******************Testing rank with sdsl**************\n" ;
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-            sdsl::rank_support_v<> rsb(b) ;
-            for(size_t rank_query = 0; rank_query < N ; ++rank_query){
+            //sdsl::rank_support_v<> rsb(b) ;
+            for(size_t rank_query = 0; rank_query < 100 ; ++rank_query){
                 auto computed_rank = (*this)[rank_query] ;
                 //sdsl is non inclusive
-                computed_rank = computed_rank - (*b)[rank_query] ;
-                if (computed_rank != rsb(rank_query)){
-                    std::cerr << "ranks do not match " 
-                              << "computed rank " << computed_rank
-                              << "\t sdsl rank " << rsb(rank_query) 
-                              << " BUG !!!! \n" ;
-                    std::exit(1) ;
-                }
-                //std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
-                _verbose("\rrank_query passed : %lu", rank_query);
+                //computed_rank = computed_rank - (*b)[rank_query] ;
+                //if (computed_rank != rsb(rank_query)){
+                //    std::cerr << "ranks do not match " 
+                //              << "computed rank " << computed_rank
+                //              << "\t sdsl rank " << rsb(rank_query) 
+                //              << " BUG !!!! \n" ;
+                //    std::exit(1) ;
+                //}
+                ////std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
+                //_verbose("\rrank_query passed : %lu", rank_query);
             }
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "\nTest completed ... elapsed time " 
-                << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() 
-                << " sec\n" ;  
-                std::cout << "\n*******************Testing Ends***********************\n" ;
+            //std::cout << "\nTest completed ... elapsed time " 
+            //std::cout << "\n*******************Testing Ends***********************\n" ;
+            return (std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) ; 
         }
 
         void pretty_print(){
@@ -459,8 +458,8 @@ class rank_supp{
             std::cout << "Inner block array size in bits "<< sdsl::size_in_bytes(Rp)*8 <<"\n" ;
         }
 
-        void overload(){
-            std::cout << "Total size in bits " << sdsl::size_in_bytes(Rs)*8 + sdsl::size_in_bytes(Rb)*8 + sdsl::size_in_bytes(Rp)*8 << "\n" ;
+        size_t overload(){
+            return sdsl::size_in_bytes(Rs)*8 + sdsl::size_in_bytes(Rb)*8 + sdsl::size_in_bytes(Rp)*8 ;
         }
 
 
@@ -838,6 +837,116 @@ class wavelet_tree{
             }
             //std::cout << pos << "\t" << alphabetRevMap[alpha.get_int(0,logsize)] << "\n" ;
             return  alphabetRevMap[alpha.get_int(0,logsize)]  ;
+        }
+
+
+        void select(char to_search, size_t select_pos, bool debug = false){
+            // binary search to find the location
+            size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
+            std::vector<rank_supp> bv_vec_r ;
+            //debug = true ;
+            
+            for(size_t l = 0 ; l < logsize ; ++l){
+                std::cout << bv_vec[l] << "\n" ;
+                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            }
+
+            auto& leafRange = RangeVec[logsize - 1] ;
+            int low = 0, mid = 0 ;
+            int high = leafRange.size() - 1;
+            size_t m_val{0} ;
+
+            //auto msb = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
+            size_t alphabet = alphabetMap[to_search] ;
+            auto last_bit = alphabetMap[to_search] >> 1 ;
+
+            while(low <= high){
+                mid = low + ((high - low) >> 2) ;
+                m_val = leafRange[mid] ;
+                if(debug) std::cout << "m_val " << m_val << "\n" ;
+                if(m_val >= select_pos){
+                    high = mid - 1 ;
+                }else{
+                    low = mid + 1 ;
+                }
+            }
+            size_t bucket{0} ;
+            if(leafRange[low] == alphabetMap[to_search]){
+                bucket = low ;
+            }else{
+                bucket = low - 1 ;
+            }
+            
+            size_t bucket_min = leafRange[bucket] ;
+            size_t bucket_max = bucket_min ;
+            if(bucket < leafRange.size()-1){
+                if(bucket_min < leafRange[bucket + 1]-1){
+                    bucket_max = bucket_min + 1 ;
+                }
+            }
+            
+            size_t curr_bit = 0 ;
+            if((bucket_max != bucket_min) && (alphabet == bucket_max)){
+                curr_bit = 1 ;
+            }
+
+            // recursive select operation
+            size_t curr_node_ind = bucket ;
+            size_t curr_sel_query = select_pos ;
+            size_t start_pos_node = 0 ;
+
+            std::cout << " bucket id " << bucket << "\t" 
+            << bucket_min << "\t" << bucket_max << "\t" << curr_bit << "\n" ;
+            for(size_t level = 0 ; level < logsize ; ++level){
+                size_t l = logsize - level - 1 ;
+                std::cout << "l " << l << "\t" << curr_node_ind << "\t" << curr_sel_query << "\n" ;
+                
+                if(!curr_bit){
+                    std::cout << "left \t" << curr_bit << "\n" ; 
+                    if(curr_node_ind){
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        start_pos_node = SPosVec[l][curr_node_ind] ;
+                        curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank_0(start_pos_node - 1) ;
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) - start_pos_node  ;
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+        
+                    }else{
+
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        std::cout << bv_vec[l] << "\n" ;
+                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query)  ;
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                    }
+                    //std::cout << " after " << curr_sel_query << "\n" ;
+                }else{
+                    std::cout << "right \t" << curr_bit << "\n" ; 
+                    if(curr_node_ind){
+                        start_pos_node = SPosVec[l][curr_node_ind] ;
+                        curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank(start_pos_node - 1) ;
+                        curr_sel_query  = bv_vec_r[l].select(curr_sel_query) - start_pos_node ;
+                    }else{
+
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        std::cout << bv_vec[l] << "\n" ;
+                        curr_sel_query  = bv_vec_r[l].select(curr_sel_query) ;
+                        std::cout << "sel " << curr_sel_query << "\n" ;
+                    }
+                    //curr_sel_query  = bv_vec_r[l].select(curr_sel_query) ;
+
+                }
+                std::cout << "bucker " << bucket << "\t" << curr_node_ind << "\n" ;
+                if(curr_node_ind%2 == 0){
+                    // left child prev bit would be 0
+                    curr_bit = 0 ;
+                }else{
+                    curr_bit = 1 ;
+                }
+                curr_node_ind = std::floor(curr_node_ind/2) ;
+            }
+
+            std::cout << " curr sel query " << curr_sel_query << "\n" ;
+
         }
 
         size_t get_rank(char to_search, size_t rank_pos, bool debug = false){

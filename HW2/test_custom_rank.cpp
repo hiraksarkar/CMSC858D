@@ -13,16 +13,22 @@ int main(int argc, char** argv){
 
     //// create an extremely conjested array
     //// to see the limit
-    sdsl::bit_vector b(33, 1) ;
-    //b.set_int(0, 140003) ;
-    b[10] = 0 ;
-    b[11] = 0 ;
+    for(size_t bit_size = 1000 ; bit_size < 10000000 ; ++bit_size){
+        sdsl::bit_vector b(bit_size, 1) ;
+        customrank::rank_supp rb(&b) ;
 
-    customrank::rank_supp rb(&b) ;
-    std::cout << b << "\n" ;
-    for(size_t i = 1; i <= 2 ; ++i){
-        std::cout << rb.select_0(i)  << "\n";
+        size_t bits = rb.overload() ;
+        auto time_req = rb.test_rank() ;
+        if(bit_size % 100000 == 0)
+            std::cout << bit_size << "\t" << bits << "\t" << time_req << "\n" ;
+
     }
+    //b.set_int(0, 140003) ;
+
+    //std::cout << b << "\n" ;
+    //for(size_t i = 1; i <= 2 ; ++i){
+    //    std::cout << rb.select_0(i)  << "\n";
+    //}
 
     //std::cout << "stored integer " << b.get_int(0, N) << "\n";
 
@@ -33,13 +39,12 @@ int main(int argc, char** argv){
     //           << std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() 
     //           << " ms\n" ; 
 
-    std::string outDir = "./" ;
+    //std::string outDir = "./" ;
+
     //customrank::wavelet_tree wt(outDir) ; 
     //wt.test_load_and_rank() ;
-    customrank::wavelet_tree() ;    
-    //rb.overload() ;
+    //customrank::wavelet_tree() ;    
     //rb.pretty_print() ;
-    //rb.test_rank() ;
     //rb.test_select() ;
     
     
