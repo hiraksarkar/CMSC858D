@@ -14,6 +14,7 @@
 #include <sstream>
 #include "sdsl/bit_vectors.hpp"
 #include "sdsl/int_vector.hpp"
+#include "ghc/filesystem.hpp"
 
 #define _verbose(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
 
@@ -485,12 +486,12 @@ class rank_supp{
 
 class wavelet_tree{
     public:
-        wavelet_tree(std::string& outDir_){
-            outDir = outDir_ ;
-        }
 
-        wavelet_tree(){
-            std::string s = "alabar_a_la_alabardadd0000dddfzxsdcxzwesdfggseee_dldls9ldlsdlseddddddddddds" ;
+        wavelet_tree(){}
+
+        wavelet_tree(std::string& s){
+            //std::string s = "alabar_a_la_alabardadd000000000000000000000000000000000000000dddfzxsdcxzw" ;
+            //s = "_abbbbbbbbbbbbbbbba__vbbbcddd_ds____" ;
             //std::string s = "0167154263" ;
             std::set<char> alphabetset;
             std::vector<char> alphabets ;
@@ -534,7 +535,7 @@ class wavelet_tree{
             //    std::cout << i << "\t" << hist[i] << "\n" ;
             //}
            
-            std::cout << "\nConstructed wavelet tree \n" ;
+            std::cout << "****Constructed wavelet tree*****\n" ;
 
             RangeVec.resize(logsize) ;
             SPosVec.resize(logsize) ;
@@ -570,6 +571,12 @@ class wavelet_tree{
                     if(i < std::pow(2,l) - 1){
                         range[i] = *std::min_element(reallocatedAlphabet.begin() + SPosVec[l][i], reallocatedAlphabet.begin() + SPosVec[l][i+1]) ;
                     }else{
+                        //std::cout << "Should contain only alphabet indices\n" ;
+                        //for(size_t j = 0 ; j < reallocatedAlphabet.size() ; ++j){
+                        //    std::cout << reallocatedAlphabet[j] << " " ;
+                        //}
+                        //std::cout << "\n" ;
+
                         range[i] = *std::min_element(reallocatedAlphabet.begin() + SPosVec[l][i], reallocatedAlphabet.end()) ;
                     }
                 }
@@ -577,16 +584,18 @@ class wavelet_tree{
 
             }
 
-            std::cout << "SPos\n" ;
-            for(auto& SPos : SPosVec){
-                for(auto& s : SPos){
-                    std::cout << s << "\t" ;
-                }
-                std::cout << "\n" ;
-            }
+            //std::cout << "SPos\n" ;
+            //for(auto& SPos : SPosVec){
+            //    for(auto& s : SPos){
+            //        std::cout << s << "\t" ;
+            //    }
+            //    std::cout << "\n" ;
+            //}
 
-            dump_wavelet_tree() ;
+            //dump_wavelet_tree() ;
+        
             
+            std::cout << "*********Silent Testing***********\n" ;
             std::vector<rank_supp> bv_vec_r ;
             for(size_t l = 0 ; l < logsize ; ++l){
                 bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
@@ -596,11 +605,14 @@ class wavelet_tree{
             for(size_t test_pos = 0 ; test_pos < s.size() ; ++test_pos){
                 for(auto& c : alphabetset){
                     auto fr = get_rank(c, test_pos) ;
-                    std::cout << c << "\t" << fr << "\n" ;
+                    //std::cout << c << "\t" << fr << "\n" ;
+
                 }
             }
-            std::cout << s.size() << "\n";
-            auto fr = get_rank('x', 0) ;
+
+            //auto fr = get_rank('v', 1, true) ;
+            std::cout << "Number of distinct characters " << alphabetMap.size() << "\n" ;
+            std::cout << "Number of characters " << s.size() << "\n" ;
         }
 
 
@@ -652,7 +664,7 @@ class wavelet_tree{
         }
 
 
-        void load_wave_tree(){
+        void load_wave_tree(std::string outDir = "./"){
             //std::string outDir = "./" ;
             std::cout << "Loading wavelet tree \n" ;
 
@@ -673,6 +685,7 @@ class wavelet_tree{
                     split(line, tokens, "\t") ;
                         if (tokens.size() > 1){
                             alphabetMap[tokens[0][0]] = std::stoul(tokens[1]) ;
+                            alphabetRevMap[std::stoul(tokens[1])] = tokens[0][0] ; 
                         }
                 }
             }
@@ -731,8 +744,8 @@ class wavelet_tree{
 
         }
 
-        void dump_wavelet_tree(){
-            std::string outDir = "./" ;
+        void dump_wavelet_tree(std::string outDir = "./"){
+            //std::string outDir = "./" ;
             std::string alphabetMapFile = outDir + "/alphabet_map.txt" ;
             std::string posVecFile = outDir + "/pos_vec.txt" ;
 
@@ -773,9 +786,59 @@ class wavelet_tree{
                 }
             }
 
-            std::cout << "dumped\n" ;
+            std::cout << "Files are written to " << outDir << "\n" ;
         }
 
+
+        char access(size_t pos, bool debug = false){
+            //std::cout << "In access \n" ;
+
+            size_t curr_rank_query = pos ;
+            size_t curr_node_ind = 0 ;
+            size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
+            std::vector<rank_supp> bv_vec_r ;
+            //debug = true ;
+            
+            for(size_t l = 0 ; l < logsize ; ++l){
+                //std::cout << bv_vec[l] << "\n" ;
+                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            }
+
+            //std::cout << "created ranks \n" ;
+
+            size_t start_pos_node = 0 ;
+            sdsl::bit_vector alpha(logsize,0) ;
+            for(size_t l = 0; l < logsize ; ++l){
+                auto bit = bv_vec[l][start_pos_node + curr_rank_query] ;
+                if(debug) { 
+                    std::cout << " start pos node " << start_pos_node << "\t" 
+                                << "curr_node_id " << curr_node_ind << "\t"
+                                << "bit " << bit << "\t"
+                                      << "curr_rank_query "<<  curr_rank_query << "\n" ;
+                }
+                if(curr_node_ind){
+                    start_pos_node = SPosVec[l][curr_node_ind-1] ;
+                }
+                if(!bit){
+                    if(debug) std::cout << "here \n" ;
+                    curr_rank_query = bv_vec_r[l].get_rank_0(start_pos_node + curr_rank_query) ;
+                    if(start_pos_node)
+                        curr_rank_query = curr_rank_query - bv_vec_r[l].get_rank_0(start_pos_node - 1) ;
+                    curr_node_ind = 2*curr_node_ind ;
+                }else{
+                    curr_rank_query = bv_vec_r[l].get_rank(start_pos_node + curr_rank_query) ;
+                    if(start_pos_node)
+                        curr_rank_query = curr_rank_query - bv_vec_r[l].get_rank(start_pos_node - 1) ;
+                    curr_node_ind = 2*curr_node_ind + 1 ;
+                }
+                if(curr_rank_query > 0)
+                    curr_rank_query -= 1 ;
+                // substract prev rank if other nodes
+                alpha[logsize - l - 1] = bit ;
+            }
+            //std::cout << pos << "\t" << alphabetRevMap[alpha.get_int(0,logsize)] << "\n" ;
+            return  alphabetRevMap[alpha.get_int(0,logsize)]  ;
+        }
 
         size_t get_rank(char to_search, size_t rank_pos, bool debug = false){
             // build the needed structure
@@ -853,7 +916,7 @@ class wavelet_tree{
                         curr_rank_query = bv_vec_r[l-1].get_rank(curr_rank_query) ;
                     }
                 }
-                if(curr_rank_query > 1)
+                if(curr_rank_query > 0)
                     curr_rank_query = curr_rank_query - 1 ;
                 curr_branch = (alphabetMap[to_search] &  static_cast<int>(std::pow(2, logsize - l - 1))) >> (logsize - l - 1) ;
             }
@@ -863,6 +926,8 @@ class wavelet_tree{
             if(!curr_branch){
                 if(curr_node_ind != 0){
                     auto start_pos_node = SPosVec[logsize - 1][curr_node_ind] ;
+                            if(debug) std::cout << " start_pos_node " << start_pos_node 
+                                      << "\t" << " curr_rank_query " << curr_rank_query << "\n" ;
                     curr_rank_query = bv_vec_r[logsize-1].get_rank_0(start_pos_node + curr_rank_query) - bv_vec_r[logsize-1].get_rank_0(start_pos_node-1);
                 }else{
                     curr_rank_query = bv_vec_r[logsize-1].get_rank_0(curr_rank_query) ;
@@ -880,13 +945,26 @@ class wavelet_tree{
 
         }
 
+        bool inAlphabet(char c){
+            if(alphabetMap.find(c) != alphabetMap.end()){
+                return true ;
+            }else{
+                return false ;
+            }
+        }
+
+        size_t size(){
+            return txtsize ;
+        }
 
 
     private:
         std::map<char, int> alphabetMap ;
+        std::map<int, char> alphabetRevMap ;
         std::vector<sdsl::bit_vector> bv_vec ;
         std::vector<std::vector<size_t>> RangeVec ;
         std::vector<std::vector<size_t>> SPosVec ;
+
 
         size_t txtsize ;  
         std::string outDir{"./"} ;
