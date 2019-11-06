@@ -328,45 +328,46 @@ class rank_supp{
             return select_answer - 1;
         }
 
-        void test_select(){
-            std::cout << "*******************Testing select with sdsl**************\n" ;
+        size_t test_select(){
+            //std::cout << "*******************Testing select with sdsl**************\n" ;
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-            sdsl::select_support_mcl<> ssl(b) ;
+            //sdsl::select_support_mcl<> ssl(b) ;
 
-            std::cout << "max value for select " << maxselect << "\n" ;
-            for(int select_query = 1; select_query <= maxselect ; ++select_query){
+            //std::cout << "max value for select " << maxselect << "\n" ;
+            for(int select_query = 1; select_query <= 2 ; ++select_query){
+
                 auto computed_index = this->select(select_query) ;
                 //sdsl is non inclusive
                 //computed_index = computed_index - (*b)[computed_index] ;
-                if (computed_index - 1 != ssl(select_query)){
-                    //std::cout << select_query << "\t" 
-                    //          << computed_index - 1<< "\t"
-                    //          << ssl(select_query) << "\n" ;
-                    std::cerr << "ranks do not match " 
-                              << "computed rank " << computed_index - 1
-                              << "\t sdsl rank " << ssl(select_query) 
-                              << " BUG !!!! \n" ;
-                    std::exit(1) ;
-                }
-                //std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
-                _verbose("\rselect_query passed : %d", select_query);
+                //if (computed_index - 1 != ssl(select_query)){
+                //    //std::cout << select_query << "\t" 
+                //    //          << computed_index - 1<< "\t"
+                //    //          << ssl(select_query) << "\n" ;
+                //    std::cerr << "ranks do not match " 
+                //              << "computed rank " << computed_index - 1
+                //              << "\t sdsl rank " << ssl(select_query) 
+                //              << " BUG !!!! \n" ;
+                //    std::exit(1) ;
+                //}
+                ////std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
+                //_verbose("\rselect_query passed : %d", select_query);
             }
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "\nTest completed ... elapsed time " 
-                << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() 
-                << " sec\n" ;  
-                std::cout << "\n*******************Testing Ends***********************\n" ;
+            //std::cout << "\nTest completed ... elapsed time " 
+            //std::cout << "\n*******************Testing Ends***********************\n" ;
+            return (std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) ; 
+            
 
         }
 
 
-        void test_select_0(){
+        size_t test_select_0(){
            std::cout << "*******************Testing select with sdsl**************\n" ;
             std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
             sdsl::select_support_mcl<> ssl(b) ;
 
             std::cout << "max value for select " << maxselect << "\n" ;
-            for(int select_query = 1; select_query <= maxselect ; ++select_query){
+            for(int select_query = 1; select_query <= 100 ; ++select_query){
                 auto computed_index = this->select(select_query) ;
                 //sdsl is non inclusive
                 //computed_index = computed_index - (*b)[computed_index] ;
@@ -383,11 +384,12 @@ class rank_supp{
                 //std::cout << computed_rank << "\t" << rsb(rank_query) << "\n" ;
                 _verbose("\rselect_query passed : %d", select_query);
             }
+            
             std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-            std::cout << "\nTest completed ... elapsed time " 
-                << std::chrono::duration_cast<std::chrono::seconds>(end - begin).count() 
-                << " sec\n" ;  
-                std::cout << "\n*******************Testing Ends***********************\n" ; 
+            //std::cout << "\nTest completed ... elapsed time " 
+            //std::cout << "\n*******************Testing Ends***********************\n" ;
+            return (std::chrono::duration_cast<std::chrono::nanoseconds>(end - begin).count()) ; 
+            
         }
         
         size_t get_rank(size_t rank_query){
@@ -534,7 +536,7 @@ class wavelet_tree{
             //    std::cout << i << "\t" << hist[i] << "\n" ;
             //}
            
-            std::cout << "****Constructed wavelet tree*****\n" ;
+            //std::cout << "****Constructed wavelet tree*****\n" ;
 
             RangeVec.resize(logsize) ;
             SPosVec.resize(logsize) ;
@@ -594,24 +596,24 @@ class wavelet_tree{
             //dump_wavelet_tree() ;
         
             
-            std::cout << "*********Silent Testing***********\n" ;
-            std::vector<rank_supp> bv_vec_r ;
-            for(size_t l = 0 ; l < logsize ; ++l){
-                bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
-            }
+            //std::cout << "*********Silent Testing***********\n" ;
+            //std::vector<rank_supp> bv_vec_r ;
+            //for(size_t l = 0 ; l < logsize ; ++l){
+            //    bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
+            //}
             
 
-            for(size_t test_pos = 0 ; test_pos < s.size() ; ++test_pos){
-                for(auto& c : alphabetset){
-                    auto fr = get_rank(c, test_pos) ;
-                    //std::cout << c << "\t" << fr << "\n" ;
+            //for(size_t test_pos = 0 ; test_pos < s.size() ; ++test_pos){
+            //    for(auto& c : alphabetset){
+            //        auto fr = get_rank(c, test_pos) ;
+            //        //std::cout << c << "\t" << fr << "\n" ;
 
-                }
-            }
+            //    }
+            //}
 
             //auto fr = get_rank('v', 1, true) ;
-            std::cout << "Number of distinct characters " << alphabetMap.size() << "\n" ;
-            std::cout << "Number of characters " << s.size() << "\n" ;
+            //std::cout << "Number of distinct characters " << alphabetMap.size() << "\n" ;
+            //std::cout << "Number of characters " << s.size() << "\n" ;
         }
 
 
@@ -1060,6 +1062,10 @@ class wavelet_tree{
             }else{
                 return false ;
             }
+        }
+
+        size_t getAlphabetSize(){
+            return alphabetMap.size() ;
         }
 
         size_t size(){
