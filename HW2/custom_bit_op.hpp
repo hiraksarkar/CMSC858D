@@ -842,14 +842,15 @@ class wavelet_tree{
         }
 
 
-        void select(char to_search, size_t select_pos, bool debug = false){
+        size_t select(char to_search, size_t select_pos, bool debug = false){
             // binary search to find the location
+            std::cout << "query " << to_search << "\t" << select_pos << "\n" ;
             size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
             std::vector<rank_supp> bv_vec_r ;
             //debug = true ;
             
             for(size_t l = 0 ; l < logsize ; ++l){
-                std::cout << bv_vec[l] << "\n" ;
+                //std::cout << bv_vec[l] << "\n" ;
                 bv_vec_r.push_back(rank_supp(&bv_vec[l])) ;
             }
 
@@ -866,7 +867,7 @@ class wavelet_tree{
                 mid = low + ((high - low) >> 2) ;
                 m_val = leafRange[mid] ;
                 if(debug) std::cout << "m_val " << m_val << "\n" ;
-                if(m_val >= select_pos){
+                if(m_val >= alphabet){
                     high = mid - 1 ;
                 }else{
                     low = mid + 1 ;
@@ -897,47 +898,42 @@ class wavelet_tree{
             size_t curr_sel_query = select_pos ;
             size_t start_pos_node = 0 ;
 
-            std::cout << " bucket id " << bucket << "\t" 
-            << bucket_min << "\t" << bucket_max << "\t" << curr_bit << "\n" ;
-            for(size_t level = 0 ; level < logsize ; ++level){
+            //std::cout << alphabet << "\n" ;
+            //std::cout << " bucket id " << bucket << "\t" 
+            //    << bucket_min << "\t" << bucket_max << "\t" << curr_bit << "\n" ;
+            for(size_t level = 0 ; level < logsize -1 ; ++level){
                 size_t l = logsize - level - 1 ;
-                std::cout << "l " << l << "\t" << curr_node_ind << "\t" << curr_sel_query << "\n" ;
+                //std::cout << "l " << l << "\t" << curr_node_ind << "\t" << curr_sel_query << "\n" ;
                 
                 if(!curr_bit){
-                    std::cout << "left \t" << curr_bit << "\n" ; 
+                    //std::cout << "left \t" << curr_bit << "\n" ; 
                     if(curr_node_ind){
-                        std::cout << "sel " << curr_sel_query << "\n" ;
                         start_pos_node = SPosVec[l][curr_node_ind] ;
                         curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank_0(start_pos_node - 1) ;
-                        std::cout << "sel " << curr_sel_query << "\n" ;
-                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) - start_pos_node  ;
-                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        //std::cout << "absolute query " << curr_sel_query << "\t" ;
+                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) - start_pos_node + 1  ;
+                        //std::cout << "current index " << curr_sel_query << "\n" ;
         
                     }else{
-
-                        std::cout << "sel " << curr_sel_query << "\n" ;
-                        std::cout << bv_vec[l] << "\n" ;
-                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query)  ;
-                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) + 1  ;
+                        //std::cout << "absolute query " << curr_sel_query << "\t" ;
                     }
                     //std::cout << " after " << curr_sel_query << "\n" ;
                 }else{
-                    std::cout << "right \t" << curr_bit << "\n" ; 
+                    //std::cout << "right \t" << curr_bit << "\n" ; 
                     if(curr_node_ind){
                         start_pos_node = SPosVec[l][curr_node_ind] ;
                         curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank(start_pos_node - 1) ;
                         curr_sel_query  = bv_vec_r[l].select(curr_sel_query) - start_pos_node ;
+                        //std::cout << "current index " << curr_sel_query << "\n" ;
                     }else{
 
-                        std::cout << "sel " << curr_sel_query << "\n" ;
-                        std::cout << bv_vec[l] << "\n" ;
                         curr_sel_query  = bv_vec_r[l].select(curr_sel_query) ;
-                        std::cout << "sel " << curr_sel_query << "\n" ;
+                        // std::cout << "current index " << curr_sel_query << "\n" ;
                     }
                     //curr_sel_query  = bv_vec_r[l].select(curr_sel_query) ;
 
                 }
-                std::cout << "bucker " << bucket << "\t" << curr_node_ind << "\n" ;
                 if(curr_node_ind%2 == 0){
                     // left child prev bit would be 0
                     curr_bit = 0 ;
@@ -947,7 +943,13 @@ class wavelet_tree{
                 curr_node_ind = std::floor(curr_node_ind/2) ;
             }
 
-            std::cout << " curr sel query " << curr_sel_query << "\n" ;
+            if(curr_bit){
+                return (bv_vec_r[0].select(curr_sel_query) - 1) ;
+
+            }else{
+                return (bv_vec_r[0].select_0(curr_sel_query)) ;
+            }
+
 
         }
 
