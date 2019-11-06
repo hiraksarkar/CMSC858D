@@ -521,6 +521,7 @@ class wavelet_tree{
 
             // make a histogram table, can be a vector
             std::vector<int> hist(std::pow(2,logsize),0) ;
+            hist_backup.resize(alphabetMap.size(), 0) ;
             std::vector<size_t> alphabetCoded(s.size(), 0) ;
             for(size_t i = 0; i < s.size(); i++){
                 auto c = s[i] ;
@@ -529,6 +530,7 @@ class wavelet_tree{
                 bt.set_int(0, alphabetMap[c]) ;
                 T[i] = bt ;
                 hist[alphabetMap[c]]++ ;
+                hist_backup[alphabetMap[c]]++ ;
                 bv_vec[0][i] = T[i][logsize - 1];
             }
 
@@ -846,6 +848,15 @@ class wavelet_tree{
             // binary search to find the location
             std::cout << "query " << to_search << "\t" << select_pos << "\n" ;
             size_t logsize = std::floor(std::log2(alphabetMap.size()-1)) + 1 ;
+            if(hist_backup.size() <= alphabetMap[to_search]){
+                std::cout << "invalid select\n" ;
+                std::exit(1)  ;
+            }
+            if(hist_backup[alphabetMap[to_search]] < select_pos){
+                std::cout << "exceeds highest number of " << to_search << "\n" ;
+                std::exit(1) ;
+            }
+
             std::vector<rank_supp> bv_vec_r ;
             //debug = true ;
             
@@ -1081,6 +1092,7 @@ class wavelet_tree{
         std::vector<sdsl::bit_vector> bv_vec ;
         std::vector<std::vector<size_t>> RangeVec ;
         std::vector<std::vector<size_t>> SPosVec ;
+        std::vector<size_t> hist_backup ;
 
 
         size_t txtsize ;  
