@@ -49,6 +49,14 @@ int main(int argc, char** argv){
     //char* end ;
     //size_t N = std::strtoul(argv[1], &end, 10) ;
 
+    std::string outDir(argv[1]) ;
+
+    std::string rank_benchmark = outDir + "/rank_bench.txt" ;
+    std::string select_benchmark = outDir + "/select_bench.txt" ;
+    std::string wt_rank_benchmark = outDir + "/wt_rank_bench.txt" ;
+    std::string wt_select_benchmark = outDir + "/wt_select_bench.txt" ;
+
+
     //// create an extremely conjested array
     //// to see the limit
     //for(size_t bit_size = 10 ; bit_size < 1000; ++bit_size){
@@ -63,58 +71,90 @@ int main(int argc, char** argv){
     //    }
 
     //}
-    for(size_t len = 10000 ; len < 1000000; ++len){
-        std::string s(len,'*') ;
 
-        if(len%100000 == 0){
+    std::ofstream wtSelectStream(wt_select_benchmark.c_str()) ;  
+    std::ofstream wtRankStream(wt_rank_benchmark.c_str()) ;  
+
+    for(size_t len = 100000 ; len < 1000000; ++len){
+
+        if(len%10000 == 0){
+        
+        std::string s(len,'*') ;
+        //std::cout << "len " << len << "\n" ;
         gen_random_10(s, len) ;
         customrank::wavelet_tree wt(s) ;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         //customrank::rank_supp rb(&b) ;
-        auto f = wt.get_rank(s[len/2],len-6) ;
+        auto f = wt.select(s[len/2],4) ;
         std::chrono::steady_clock::time_point end_t = std::chrono::steady_clock::now();
          
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
                 
-        std::cout << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+        wtSelectStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+        begin = std::chrono::steady_clock::now();
+        f = wt.get_rank(s[len/2],4) ;
+        //customrank::rank_supp rb(&b) ;
+        end_t = std::chrono::steady_clock::now();
+        dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
+        wtRankStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+
 
         }
 
     }
-    
-    for(size_t len = 10000 ; len < 1000000; ++len){
-        std::string s(len,'*') ;
 
-        if(len%100000 == 0){
+    std::cout << "10 done \n" ;
+
+    
+    for(size_t len = 100000 ; len < 1000000; ++len){
+
+        if(len%10000 == 0){
+        //std::cout << "len " << len << "\n" ;
+        std::string s(len,'*') ;
         gen_random_26(s, len) ;
         customrank::wavelet_tree wt(s) ;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         //customrank::rank_supp rb(&b) ;
-        auto f = wt.get_rank(s[len/2],len-6) ;
+        auto f = wt.select(s[len/2],4) ;
         std::chrono::steady_clock::time_point end_t = std::chrono::steady_clock::now();
          
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
                 
-        std::cout << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
-
+        wtSelectStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+         std::string outDir = "problem" ;
+         //wt.dump_wavelet_tree(outDir); 
+         //std::exit(1);
+        begin = std::chrono::steady_clock::now();
+        f = wt.get_rank(s[len/2],4) ;
+        //customrank::rank_supp rb(&b) ;
+        end_t = std::chrono::steady_clock::now();
+        dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
+        wtRankStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
         }
 
     }
+    std::cout << "26 done \n" ;
 
-    for(size_t len = 10000 ; len < 1000000; ++len){
+    for(size_t len = 100000 ; len < 1000000; ++len){
+
+        if(len%10000 == 0){
         std::string s(len,'*') ;
-
-        if(len%100000 == 0){
         gen_random_62(s, len) ;
         customrank::wavelet_tree wt(s) ;
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
         //customrank::rank_supp rb(&b) ;
-        auto f = wt.get_rank(s[len/2],len-6) ;
+        auto f = wt.select(s[len/2],4) ;
         std::chrono::steady_clock::time_point end_t = std::chrono::steady_clock::now();
          
         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
                 
-        std::cout << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+        wtSelectStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
+        begin = std::chrono::steady_clock::now();
+        f = wt.get_rank(s[len/2],4) ;
+        //customrank::rank_supp rb(&b) ;
+        end_t = std::chrono::steady_clock::now();
+        dur = std::chrono::duration_cast<std::chrono::milliseconds>(end_t - begin).count() ; 
+        wtRankStream << f << "\t" << len << "\t" << wt.getAlphabetSize() << "\t" << dur << "\n" ;
 
         }
 
@@ -122,6 +162,7 @@ int main(int argc, char** argv){
 
     
 
+    std::cout << "62 done \n" ;
 
 
     //b.set_int(0, 140003) ;

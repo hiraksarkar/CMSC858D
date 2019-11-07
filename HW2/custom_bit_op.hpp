@@ -98,6 +98,7 @@ class rank_supp{
         ~rank_supp(){}
 
         int select(int pos, bool debug = false){ 
+            if(pos < 0){std::cout << "should not happen\n" ;} ;
 
             if(debug) std::cout << "select query " << pos << "\n" ;
             int sup_ind = 0 ; 
@@ -191,14 +192,24 @@ class rank_supp{
 
             if(debug) std::cout << "block ind " << block_ind << "\n" ;
             if(debug) std::cout << "Rb " << Rb << "\n" ;
-            int within_block_offset = offset_pos - 
+            int within_block_offset = 0 ;
+            if((sup_ind * num_block_per_superblock + block_ind) >= Rb.size()){
+                std::cout << offset_pos << "\t" << Rb.size() << "\n" ; 
+            }else{
+                within_block_offset = offset_pos - 
                         Rb.get_int((sup_ind * num_block_per_superblock + block_ind) * block_word_size, block_word_size) ;
+
+            }
+
 
             if(debug) std::cout << "within block offset " << within_block_offset << "\n" ;
             select_answer = sup_ind * superblock_size + block_ind * block_size ;
             int step_within_block = 0 ;
             int diff = 0 ;
-            while(diff < within_block_offset){
+            while((diff < within_block_offset) and (select_answer + step_within_block < b->size())){
+                if(select_answer + step_within_block >= b->size()){
+                    std::cout << "in select" <<  b->size() << "\t" << select_answer + step_within_block << "\n" ;
+                }
                 if((*b)[select_answer + step_within_block]){
                     diff += 1 ;
                 }
@@ -313,7 +324,10 @@ class rank_supp{
             select_answer = sup_ind * superblock_size + block_ind * block_size ;
             int step_within_block = 0 ;
             int diff = 0 ;
-            while(diff < within_block_offset){
+            while((diff < within_block_offset) and (select_answer + step_within_block < b->size())){
+                if(select_answer + step_within_block >= b->size()){
+                    std::cout << "in select0 " << b->size() << "\t" << select_answer + step_within_block << "\n" ;
+                }
                 if(!(*b)[select_answer + step_within_block]){
                     diff += 1 ;
                 }
@@ -854,7 +868,8 @@ class wavelet_tree{
             }
             if(hist_backup[alphabetMap[to_search]] < select_pos){
                 std::cout << "exceeds highest number of " << to_search << "\n" ;
-                std::exit(1) ;
+                return txtsize ;
+                //std::exit(1) ;
             }
 
             std::vector<rank_supp> bv_vec_r ;
@@ -868,6 +883,16 @@ class wavelet_tree{
             auto& leafRange = RangeVec[logsize - 1] ;
             int low = 0, mid = 0 ;
             int high = leafRange.size() - 1;
+            // high is last non zero
+            for(size_t i = 1; i < leafRange.size(); ++i){
+                //if(debug)std::cout << i << "\t" <<  leafRange[i] << "\n" ;
+                if (leafRange[i] == 0){
+                    high = i - 1 ;
+                    break ;
+                }
+            }
+
+            if(debug) {std::cout << "\nhigh " << high << "\t" << "low" << low ;}
             size_t m_val{0} ;
 
             //auto msb = (alphabetMap[to_search] & static_cast<int>(std::pow(2, logsize - 1)) ) >> (logsize - 1) ;
@@ -890,6 +915,8 @@ class wavelet_tree{
             }else{
                 bucket = low - 1 ;
             }
+
+            if(debug ) {std::cout << "bucket " << bucket << "\t" << low << "\n" ;}
             
             size_t bucket_min = leafRange[bucket] ;
             size_t bucket_max = bucket_min ;
@@ -910,32 +937,38 @@ class wavelet_tree{
             size_t start_pos_node = 0 ;
 
             //std::cout << alphabet << "\n" ;
-            //std::cout << " bucket id " << bucket << "\t" 
-            //    << bucket_min << "\t" << bucket_max << "\t" << curr_bit << "\n" ;
+            if(debug)std::cout << " bucket id " << bucket << "\t"  
+                << bucket_min << "\t" << bucket_max << "\t" << curr_bit << "\n" ;
             for(size_t level = 0 ; level < logsize -1 ; ++level){
                 size_t l = logsize - level - 1 ;
-                //std::cout << "l " << l << "\t" << curr_node_ind << "\t" << curr_sel_query << "\n" ;
+                if(debug) std::cout << "l " << l << "\t" << curr_node_ind << "\t" << curr_sel_query << "\n" ;
                 
                 if(!curr_bit){
-                    //std::cout << "left \t" << curr_bit << "\n" ; 
+                    if(debug)std::cout << "left \t" << curr_bit << "\n" ; 
                     if(curr_node_ind){
                         start_pos_node = SPosVec[l][curr_node_ind] ;
                         curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank_0(start_pos_node - 1) ;
-                        //std::cout << "absolute query " << curr_sel_query << "\t" ;
-                        curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) - start_pos_node + 1  ;
-                        //std::cout << "current index " << curr_sel_query << "\n" ;
+                        if(debug) std::cout << "absolute query " << curr_sel_query << "\t" ;
+                        if(bv_vec_r[l].select_0(curr_sel_query) >= start_pos_node - 1)
+                            curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) - start_pos_node + 1  ;
+                        if(debug) std::cout << "current index " << curr_sel_query << "\n" ;
         
                     }else{
                         curr_sel_query  = bv_vec_r[l].select_0(curr_sel_query) + 1  ;
-                        //std::cout << "absolute query " << curr_sel_query << "\t" ;
+                        if(debug) std::cout << "absolute query " << curr_sel_query << "\t" ;
                     }
-                    //std::cout << " after " << curr_sel_query << "\n" ;
+                    if(debug) std::cout << " after " << curr_sel_query << "\n" ;
                 }else{
-                    //std::cout << "right \t" << curr_bit << "\n" ; 
+                    if(debug) std::cout << "right \t" << curr_bit << "\n" ; 
                     if(curr_node_ind){
                         start_pos_node = SPosVec[l][curr_node_ind] ;
                         curr_sel_query = curr_sel_query + bv_vec_r[l].get_rank(start_pos_node - 1) ;
-                        curr_sel_query  = bv_vec_r[l].select(curr_sel_query) - start_pos_node ;
+                        if(bv_vec_r[l].select(curr_sel_query) >= start_pos_node){
+
+                          curr_sel_query  = bv_vec_r[l].select(curr_sel_query) - start_pos_node ;
+                        }else{
+                          std::cout << "absolute query " << curr_sel_query << "\t" << start_pos_node  << "\n" ;
+                        }
                         //std::cout << "current index " << curr_sel_query << "\n" ;
                     }else{
 
