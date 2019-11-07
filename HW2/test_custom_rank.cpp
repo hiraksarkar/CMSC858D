@@ -75,9 +75,9 @@ int main(int argc, char** argv){
     std::ofstream wtSelectStream(wt_select_benchmark.c_str()) ;  
     std::ofstream wtRankStream(wt_rank_benchmark.c_str()) ;  
 
-    for(size_t len = 100000 ; len < 1000000; ++len){
+    for(size_t len = 100000 ; len < 10000000; ++len){
 
-        if(len%10000 == 0){
+        if(len%100000 == 0){
         
         std::string s(len,'*') ;
         //std::cout << "len " << len << "\n" ;
@@ -106,9 +106,9 @@ int main(int argc, char** argv){
     std::cout << "10 done \n" ;
 
     
-    for(size_t len = 100000 ; len < 1000000; ++len){
+    for(size_t len = 100000 ; len < 10000000; ++len){
 
-        if(len%10000 == 0){
+        if(len%100000== 0){
         //std::cout << "len " << len << "\n" ;
         std::string s(len,'*') ;
         gen_random_26(s, len) ;
@@ -135,9 +135,9 @@ int main(int argc, char** argv){
     }
     std::cout << "26 done \n" ;
 
-    for(size_t len = 100000 ; len < 1000000; ++len){
+    for(size_t len = 100000 ; len < 10000000; ++len){
 
-        if(len%10000 == 0){
+        if(len%100000 == 0){
         std::string s(len,'*') ;
         gen_random_62(s, len) ;
         customrank::wavelet_tree wt(s) ;
