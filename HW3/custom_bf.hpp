@@ -80,8 +80,8 @@ namespace bf
                 M = (-1) * std::ceil((N * std::log(fpr)) /  DENOM) ;
                 k = std::ceil(std::log(M/N) * LOG2) ;
 
-                std::cout << "filter size: " << M << "\n"
-                          << "num of hashes: " << k << "\n" ;
+                //std::cout << "filter size: " << M << "\n"
+                //          << "num of hashes: " << k << "\n" ;
                 b = sdsl::bit_vector(M, 0) ;
             }
 
@@ -203,9 +203,9 @@ namespace bf
                 size_t filterSizePerBlock = CACHESIZE ;
                 numBlocks = std::ceil(M/CACHESIZE) ;
                 numKeysPerBlock = std::ceil(N / numBlocks) ;
-                std::cout << "number of blocks: " << numBlocks << "\n"
-                          << "block size " << filterSizePerBlock << "\n" 
-                          << "keys per block " << numKeysPerBlock << "\n" ;
+                //std::cout << "number of blocks: " << numBlocks << "\n"
+                //          << "block size " << filterSizePerBlock << "\n" 
+                //          << "keys per block " << numKeysPerBlock << "\n" ;
                 bf_vector.reserve(numBlocks) ;
                 for(size_t i = 0 ; i < numBlocks ; ++i){
                     bf_vector.push_back(
