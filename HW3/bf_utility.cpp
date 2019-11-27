@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
     auto queryMode = (
      command("query").set(selected, mode::query),
 
-     (option("-i", "--input-dir") &
+     (required("-i", "--input-dir") &
       value("input-file", bfOpt.inDir)) %
      "input directory",
 
@@ -124,7 +124,6 @@ int main(int argc, char* argv[]) {
     } catch (std::exception& e) {
         std::cout << "\n\nParsing command line failed with exception: " << e.what() << "\n";
         std::cout << "\n\n";
-        std::cout << make_man_page(cli, "validate") << make_man_page(cli, "extract") ;
         return 1;
     }
 
@@ -132,7 +131,7 @@ int main(int argc, char* argv[]) {
     switch(selected){
       case mode::build: buildbf(bfOpt) ; break ; 
       case mode::query: querybf(bfOpt) ; break ; 
-    case mode::help: std::cout << make_man_page(cli, "build") << make_man_page(cli, "query") ; 
+    case mode::help: std::cout << make_man_page(cli) ; 
     }
     }else{
         cout << usage_lines(cli, "help") << '\n';
