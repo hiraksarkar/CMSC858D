@@ -7,6 +7,8 @@
 #include "custom_bf.hpp"
 #include <random>
 
+#define _verbose(fmt, ...) fprintf(stderr, fmt, __VA_ARGS__)
+
 void gen_random_26(std::string& s, const int len) {
     static const char alphanum[] =
         "0123456789"
@@ -44,8 +46,11 @@ int main(int argc, char** argv){
 
     std::string outDir(argv[1]) ;
 
-    std::string rank_benchmark = outDir + "/bloom_bench.txt" ;
-    std::string select_benchmark = outDir + "/blocked_bloom_bench.txt" ;
+    std::string bf_benchmark = outDir + "/bloom_bench.txt" ;
+    std::string bbf_benchmark = outDir + "/blocked_bloom_bench.txt" ;
+    std::ofstream bfStream(bf_benchmark.c_str()) ;
+    std::ofstream bbfStream(bbf_benchmark.c_str()) ;
+
     // insert keys from 0 - 500
     // case 1. test with 500 - 1000
     // case 2. test with 250 - 750
@@ -95,7 +100,7 @@ int main(int argc, char** argv){
                 end_t = std::chrono::steady_clock::now();
                 auto dur4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_t - begin).count() ; 
 
-                std::cout << num_of_keys 
+                bfStream << num_of_keys 
                         << "\t" << fpr 
                         << "\t" << fpr_1/500.0 
                         << "\t" << fpr_2/500.0
@@ -107,6 +112,7 @@ int main(int argc, char** argv){
                         << "\n" ;
                 
             }
+            _verbose("\r Number of keys processed: %lu", num_of_keys) ;
         }
 
     }
@@ -156,7 +162,7 @@ int main(int argc, char** argv){
                 end_t = std::chrono::steady_clock::now();
                 auto dur4 = std::chrono::duration_cast<std::chrono::nanoseconds>(end_t - begin).count() ; 
 
-                std::cout << num_of_keys 
+                bbfStream << num_of_keys 
                         << "\t" << fpr 
                         << "\t" << fpr_1/500.0 
                         << "\t" << fpr_2/500.0
@@ -168,6 +174,7 @@ int main(int argc, char** argv){
                         << "\n" ;
                 
             }
+            _verbose("\r Number of keys processed: %lu", num_of_keys) ;
         }
     }
 
